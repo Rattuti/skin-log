@@ -1,561 +1,1082 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>肌ログ</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>skin-log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
-  :root {
-    --bg: #f8f3f2;
-    --panel: #ffffff;
-    --border: #ecdfdc;
-    --text: #2e2725;
-    --muted: #7a6f6c;
-    --accent: #c06e7a;
-    --accent-dark: #9c525d;
-    --mild: #6b8f71;
-    --mid: #c99a3f;
-    --severe: #b3546b;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    padding: 24px;
-  }
-  h1 { font-size: 1.5rem; margin: 0 0 4px; }
-  .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 0.9rem; }
-  .layout { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 760px; margin: 0 auto; }
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px 20px;
-  }
-  .panel h2 { font-size: 1rem; margin: 0 0 12px; }
-  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-  .field label { font-size: 0.82rem; color: var(--muted); }
-  select, input[type=text], input[type=date], textarea, button {
-    font: inherit;
-    padding: 7px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--panel);
-    color: var(--text);
-  }
-  textarea { resize: vertical; min-height: 44px; }
-  button { cursor: pointer; background: var(--accent); color: #fff; border: none; padding: 8px 16px; }
-  button:hover { background: var(--accent-dark); }
-  button.secondary { background: var(--panel); color: var(--text); border: 1px solid var(--border); padding: 4px 10px; }
-  button.secondary:hover { background: var(--bg); }
-  .hint { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
-  .hint.sync-error { color: var(--severe); }
+:root{
+  --paper:#E4E8E4;
+  --surface:#F7F9F6;
+  --surface-2:#EDF0EC;
+  --ink:#161D1A;
+  --ink-2:#3E4A45;
+  --muted:#77837D;
+  --line:#CFD6D0;
+  --accent:#26695A;
+  --accent-soft:#DCE8E3;
+  --warn:#9E4436;
+  --warn-soft:#F0DDD8;
+  --drug:#4A5C8C;
 
-  .check-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-  .check-item {
-    display: flex; align-items: center; gap: 5px;
-    border: 1px solid var(--border); border-radius: 999px;
-    padding: 5px 12px 5px 10px; font-size: 0.85rem; cursor: pointer;
-  }
-  .check-item input { accent-color: var(--accent); margin: 0; }
-  .check-item.checked { background: var(--bg); border-color: var(--accent); }
+  --s1:#B4655A;
+  --s2:#BE8A70;
+  --s3:#B0B5A9;
+  --s4:#6E9B85;
+  --s5:#26695A;
 
-  .severity-row { display: flex; gap: 6px; }
-  .severity-btn {
-    flex: 1; text-align: center; border: 1px solid var(--border); border-radius: 6px;
-    padding: 8px 0; cursor: pointer; background: var(--panel); font-weight: 600; color: var(--muted);
-  }
-  .severity-btn.selected { color: #fff; border-color: transparent; }
+  --jp:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,"Roboto Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--paper)}
+body{
+  font-family:var(--jp);color:var(--ink);
+  font-size:15px;line-height:1.7;
+  padding-bottom:84px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:480px;margin:0 auto;padding:0 18px}
 
-  .entry-list { display: flex; flex-direction: column; gap: 10px; }
-  .entry {
-    border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px;
-  }
-  .entry-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  .entry-head .date { font-weight: 600; font-size: 0.9rem; }
-  .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 0.76rem; color: #fff; font-weight: 600; }
-  .area-badge { background: var(--accent); }
-  .severity-badge { min-width: 22px; justify-content: center; }
-  .symptom-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-  .symptom-chip { background: var(--bg); border-radius: 999px; padding: 2px 10px; font-size: 0.76rem; color: var(--text); }
-  .entry-detail { margin-top: 8px; font-size: 0.82rem; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
-  .entry-detail .label { color: var(--text); font-weight: 600; }
-  .entry-actions { margin-top: 8px; text-align: right; }
-  .empty { color: var(--muted); font-size: 0.88rem; padding: 8px 0; }
+/* ---- 署名要素: 日々のストライプ帯 ---- */
+.band{
+  background:var(--ink);
+  padding:18px 0 14px;
+  position:sticky;top:0;z-index:20;
+}
+.band .wrap{display:block}
+.band-head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:10px;
+}
+.band-title{
+  font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+  color:#8FA69C;text-transform:uppercase;
+}
+.band-count{font-family:var(--mono);font-size:10px;color:#8FA69C;letter-spacing:.08em}
+.stripes{
+  display:flex;gap:2px;align-items:flex-end;height:46px;
+  overflow:hidden;
+}
+.stripe{
+  flex:1 1 0;min-width:0;border-radius:1px;
+  background:#2A3532;height:100%;position:relative;
+  transition:opacity .2s;
+}
+.stripe.today{outline:1.5px solid #F7F9F6;outline-offset:1px}
+.stripe .drug-dot{
+  position:absolute;left:50%;transform:translateX(-50%);
+  bottom:-7px;width:3px;height:3px;border-radius:50%;background:var(--drug);
+}
+.stripe.flare::after{
+  content:"";position:absolute;top:-6px;left:50%;transform:translateX(-50%);
+  width:3px;height:3px;border-radius:50%;background:var(--warn);
+}
+.band-legend{
+  display:flex;justify-content:space-between;margin-top:14px;
+  font-family:var(--mono);font-size:9px;color:#6C7B75;letter-spacing:.06em;
+}
+
+/* ---- 共通 ---- */
+h2{font-size:13px;font-weight:700;letter-spacing:.04em;margin:26px 0 10px}
+.eyebrow{
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+  color:var(--muted);text-transform:uppercase;margin:28px 0 8px;
+  display:flex;align-items:center;gap:8px;
+}
+.eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+.card{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:3px;padding:16px;margin-bottom:12px;
+}
+.muted{color:var(--muted);font-size:12.5px;line-height:1.65}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.btn{
+  border:1px solid var(--line);background:var(--surface);
+  padding:9px 14px;border-radius:3px;font-size:13px;
+}
+.btn:active{background:var(--surface-2)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-ghost{border-color:transparent;color:var(--muted);font-size:12.5px;padding:6px 8px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- 今日 ---- */
+.today-head{margin:22px 0 4px}
+.today-date{font-size:26px;font-weight:700;letter-spacing:.01em}
+.today-sub{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.1em}
+
+.routines{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.rt{
+  border:1px solid var(--line);background:var(--surface);
+  border-radius:3px;padding:16px 12px;text-align:center;
+  display:flex;flex-direction:column;gap:5px;align-items:center;
+  transition:background .15s,border-color .15s;
+}
+.rt-mark{font-size:19px;line-height:1}
+.rt-name{font-size:14px;font-weight:500}
+.rt-items{font-size:10.5px;color:var(--muted);line-height:1.4}
+.rt.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.rt.on .rt-items{color:#C6DED6}
+
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:10px}
+.sc{
+  aspect-ratio:1;border-radius:3px;border:1px solid var(--line);
+  background:var(--surface);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;
+  transition:transform .12s;
+}
+.sc:active{transform:scale(.94)}
+.sc .dot{width:13px;height:13px;border-radius:50%}
+.sc .lb{font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+.sc.on{border-width:2px;border-color:var(--ink)}
+.sc.on .lb{color:var(--ink)}
+.scale-ends{display:flex;justify-content:space-between;margin-top:6px;font-size:10.5px;color:var(--muted)}
+
+.pro-card{
+  border:1px solid var(--drug);background:#EBEEF6;
+  border-radius:3px;padding:14px 16px;margin-top:12px;
+  display:flex;align-items:center;gap:13px;
+}
+.pro-card.done{background:var(--surface-2);border-color:var(--line)}
+.pro-body{flex:1;min-width:0}
+.pro-title{font-size:13.5px;font-weight:500}
+.pro-sub{font-size:11px;color:var(--muted)}
+
+.tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.tag{
+  border:1px solid var(--line);background:var(--surface);
+  border-radius:100px;padding:6px 13px;font-size:12.5px;
+}
+.tag.on{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+
+details.extra{margin-top:14px}
+details.extra summary{
+  list-style:none;font-size:12.5px;color:var(--muted);
+  padding:8px 0;display:flex;align-items:center;gap:6px;
+}
+details.extra summary::-webkit-details-marker{display:none}
+details.extra summary::before{content:"＋";font-family:var(--mono);font-size:11px}
+details.extra[open] summary::before{content:"−"}
+
+/* ---- 検証 ---- */
+.metric{display:flex;align-items:baseline;gap:9px}
+.metric-v{font-family:var(--mono);font-size:30px;font-weight:500;letter-spacing:-.02em}
+.metric-u{font-size:12px;color:var(--muted)}
+.delta{font-family:var(--mono);font-size:13px;padding:1px 7px;border-radius:2px}
+.delta.up{background:var(--accent-soft);color:var(--accent)}
+.delta.down{background:var(--warn-soft);color:var(--warn)}
+.delta.flat{background:var(--surface-2);color:var(--muted)}
+
+.bar-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.bar-row:last-child{border-bottom:none}
+.bar-name{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{width:74px;height:6px;background:var(--surface-2);border-radius:100px;position:relative;flex:none}
+.bar-fill{position:absolute;top:0;height:100%;border-radius:100px}
+.bar-n{font-family:var(--mono);font-size:10px;color:var(--muted);width:44px;text-align:right;flex:none}
+
+.heat{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:12px}
+.heat-col{display:grid;grid-template-rows:repeat(7,1fr);gap:4px}
+.hc{aspect-ratio:1;border-radius:2px;background:var(--surface-2)}
+.hc.sched{background:#D3DAE9}
+.hc.done{background:var(--drug)}
+.hc.miss{background:var(--warn-soft);border:1px solid var(--warn)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:11px;color:var(--muted)}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:-1px}
+
+.flare-item{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)}
+.flare-item:last-child{border-bottom:none}
+.flare-d{font-family:var(--mono);font-size:11.5px;color:var(--warn);width:52px;flex:none}
+
+/* ---- 棚 ---- */
+.item{
+  display:flex;align-items:center;gap:11px;padding:12px 0;
+  border-bottom:1px solid var(--line);
+}
+.item:last-child{border-bottom:none}
+.item-b{flex:1;min-width:0}
+.item-n{font-size:14px;font-weight:500}
+.item-m{font-size:11px;color:var(--muted)}
+.pill{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;
+  padding:2px 7px;border-radius:2px;background:var(--surface-2);color:var(--muted);
+}
+.pill.trial{background:var(--accent-soft);color:var(--accent)}
+.pill.drug{background:#E3E8F3;color:var(--drug)}
+
+.field{margin-bottom:13px}
+.field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:5px}
+input[type=text],input[type=date],select,textarea{
+  width:100%;font-family:inherit;font-size:14px;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:3px;padding:10px 11px;
+}
+textarea{resize:vertical;min-height:66px;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:100px;padding:5px 11px;font-size:12px}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+
+.sheet-bg{
+  position:fixed;inset:0;background:rgba(22,29,26,.4);z-index:40;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.sheet{
+  background:var(--paper);width:100%;max-width:480px;
+  border-radius:10px 10px 0 0;padding:20px 18px 30px;
+  max-height:88vh;overflow:auto;
+}
+.sheet h3{font-size:16px;margin-bottom:16px}
+.sheet-act{display:flex;gap:9px;margin-top:18px}
+.sheet-act .btn{flex:1;text-align:center;padding:12px}
+
+/* ---- 参考 ---- */
+.ref dt{font-size:13.5px;font-weight:500;margin-top:14px}
+.ref dd{font-size:12.5px;color:var(--ink-2);line-height:1.7;margin-top:3px}
+.conflict{border-left:3px solid var(--warn);padding:10px 0 10px 12px;margin-bottom:11px}
+.conflict.info{border-left-color:var(--muted)}
+.conflict-h{font-size:13px;font-weight:500}
+.notice{
+  background:var(--surface-2);border:1px solid var(--line);
+  border-radius:3px;padding:13px 14px;font-size:11.5px;
+  color:var(--ink-2);line-height:1.75;margin-top:16px;
+}
+.rank{display:flex;gap:2px;margin-top:8px}
+.rank div{
+  flex:1;text-align:center;font-family:var(--mono);font-size:9px;
+  padding:7px 2px;color:#fff;line-height:1.4;
+}
+
+/* ---- タブ ---- */
+.tabs{
+  position:fixed;bottom:0;left:0;right:0;z-index:30;
+  background:var(--surface);border-top:1px solid var(--line);
+  display:flex;padding-bottom:env(safe-area-inset-bottom);
+}
+.tab{
+  flex:1;padding:11px 0 13px;text-align:center;
+  display:flex;flex-direction:column;gap:3px;align-items:center;
+  color:var(--muted);
+}
+.tab-l{font-size:10.5px;letter-spacing:.04em}
+.tab-i{width:15px;height:15px;border:1.5px solid currentColor;border-radius:2px}
+.tab[data-t=today] .tab-i{border-radius:50%}
+.tab[data-t=verify] .tab-i{border-radius:0;border-width:0 0 1.5px 1.5px}
+.tab[data-t=ref] .tab-i{border-radius:2px 2px 8px 2px}
+.tab.on{color:var(--accent)}
+.tab.on .tab-i{background:var(--accent-soft)}
+
+.empty{text-align:center;padding:34px 20px;color:var(--muted);font-size:13px;line-height:1.8}
+.toast{
+  position:fixed;bottom:96px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:var(--surface);padding:9px 17px;
+  border-radius:3px;font-size:12.5px;z-index:50;
+  animation:up .25s ease;
+}
+@keyframes up{from{opacity:0;transform:translate(-50%,8px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+@media print{
+  .tabs,.band,.no-print{display:none!important}
+  body{background:#fff;padding:0}
+  .card{break-inside:avoid;border-color:#999}
+}
 </style>
-</head>
-<body>
 
-<h1>肌ログ</h1>
-<p class="subtitle">肌の状態を記録して、変化やきっかけに気づきやすくする</p>
-
-<div class="layout">
-  <div class="panel">
-    <h2>今日の記録</h2>
-    <div class="field">
-      <label for="recordDate">日付</label>
-      <input type="date" id="recordDate">
+<div class="band">
+  <div class="wrap">
+    <div class="band-head">
+      <span class="band-title">skin&nbsp;log</span>
+      <span class="band-count num" id="bandCount"></span>
     </div>
-    <div class="field">
-      <label for="areaSelect">部位</label>
-      <select id="areaSelect"></select>
-    </div>
-    <div class="field">
-      <label>症状(複数選択可)</label>
-      <div class="check-grid" id="symptomGrid"></div>
-    </div>
-    <div class="field">
-      <label>重症度</label>
-      <div class="severity-row" id="severityRow"></div>
-    </div>
-    <div class="field">
-      <label for="triggerInput">きっかけ・トリガー</label>
-      <input type="text" id="triggerInput" placeholder="例: 辛いものを食べた、新しい洗顔料、乾燥した日 など">
-    </div>
-    <div class="field">
-      <label for="treatmentInput">対処</label>
-      <input type="text" id="treatmentInput" placeholder="例: 保湿クリーム、市販薬 など">
-    </div>
-    <div class="field">
-      <label for="memoInput">メモ</label>
-      <textarea id="memoInput" placeholder="その他気づいたこと"></textarea>
-    </div>
-    <button type="button" id="addRecordBtn">記録する</button>
-    <p class="hint" id="syncStatus"></p>
-  </div>
-
-  <div class="panel">
-    <h2>記録一覧</h2>
-    <div class="entry-list" id="entryList"></div>
+    <div class="stripes" id="stripes"></div>
+    <div class="band-legend"><span id="bandFrom"></span><span>今日</span></div>
   </div>
 </div>
 
+<main class="wrap" id="view"></main>
+
+<nav class="tabs">
+  <button class="tab on" data-t="today"><span class="tab-i"></span><span class="tab-l">今日</span></button>
+  <button class="tab" data-t="verify"><span class="tab-i"></span><span class="tab-l">検証</span></button>
+  <button class="tab" data-t="shelf"><span class="tab-i"></span><span class="tab-l">棚</span></button>
+  <button class="tab" data-t="ref"><span class="tab-i"></span><span class="tab-l">参考</span></button>
+</nav>
+
 <script>
-(function () {
-  "use strict";
+/* ============================================================
+   Store — 保存層アダプタ
+   本番(GitHub Pages)では notion-bridge に差し替える。
+   read()/write() の2関数だけ置き換えれば他は無改修。
+   ============================================================ */
+/* ============================================================
+   Notion同期設定
+   4つのデータソースIDはNotion MCP経由で作成済み（2026-08-11）。
+   APP_KEYはこのファイル作成時に生成した値。Worker側にも
+   同じ値を `wrangler secret put APP_KEY` で登録すること。
+   ============================================================ */
+const BRIDGE_BASE = "https://notion-bridge.rattuti.workers.dev";
+const APP_KEY = "A3IwBln5mcfVYqOQe-c_TncP6MzLtC7Q5lU7nnAhZ00";
+const DS = {
+  items:    "115d044f-dfce-4f8f-b2a5-3bb47eba8539", // スキンアイテム
+  routines: "cbce8e0d-b187-4423-9fff-0ea644beaae3", // スキンルーティン
+  logs:     "65d25f8a-846b-4daf-a6ab-1f3d45868b06", // 肌ログ
+  plans:    "5314cfe3-02e3-4749-9ab7-fa8ad299601c", // プロアクティブ計画
+};
 
-  // ---------- Notion bridge shim ----------
-  // window.claude.mcp が存在しない環境(Artifactではなくローカルファイル等として
-  // 開かれた場合)でのみ、Cloudflare Worker(notion-bridge)経由でNotion側の
-  // データを読み書きする互換シムを定義する。window.claude.mcp.callTool(server,
-  // tool, input) と同じ形を再現し、アプリ本体のコードからは区別なく呼べるようにする。
-  if (!(window.claude && window.claude.mcp)) {
-    (function () {
-      var BRIDGE_BASE = "https://notion-bridge.rattuti.workers.dev";
-      var APP_KEY_STORAGE = "notion_bridge_key";
-      var VIEW_TO_DATA_SOURCE = {
-        "view://fc2e5ae9-bda5-4677-b930-6ba44a2fb6cc": "fc2e5ae9-bda5-4677-b930-6ba44a2fb6cc"
-      };
-
-      // notion-query-database-view/notion-create-pagesで取得・作成した各ページIDが
-      // どのデータソース(DB)に属するかを控えておく。notion-update-pageはpage_idしか
-      // 受け取らないため、更新時にこの対応表からdataSourceIdを引く。
-      // Workerが返すIDはハイフン付きだが、アプリ側はextractPageId()でハイフンなしの
-      // 32桁hexに変換した値をnotionIdとして保持するため、キーは常にハイフンを
-      // 除去して正規化してから読み書きする。
-      var pageDataSourceMap = {};
-      function normalizeId(id) {
-        return (id || "").replace(/-/g, "");
-      }
-
-      function getAppKey() {
-        var key = localStorage.getItem(APP_KEY_STORAGE);
-        if (!key) {
-          key = window.prompt("Notion連携用のアプリキーを入力してください");
-          if (key) localStorage.setItem(APP_KEY_STORAGE, key);
-        }
-        return key;
-      }
-
-      function bridgeFetch(path, body) {
-        var key = getAppKey();
-        return fetch(BRIDGE_BASE + path, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-App-Key": key || "" },
-          body: JSON.stringify(body)
-        }).then(function (res) {
-          if (res.status === 401) {
-            localStorage.removeItem(APP_KEY_STORAGE);
-            return Promise.reject({ code: "unauthorized", message: "アプリキーが正しくありません" });
-          }
-          if (!res.ok) {
-            return Promise.reject({ code: "http_" + res.status, message: "Notion連携サーバーへの通信に失敗しました" });
-          }
-          return res.json();
-        });
-      }
-
-      // bridgeFetchはWorkerの生レスポンス({results,...}や{pages:[...]}等)を
-      // そのまま返す。window.claude.mcp.callToolの実際の戻り値は{payload: ...}
-      // で包まれた形のため、ここで同じ形に包み直してからアプリ本体に返す。
-      // Workerの生レスポンスはcamelCase(hasMore/nextCursor)だが、本来の
-      // window.claude.mcp.callToolはsnake_case(has_more/next_cursor)を返すため、
-      // アプリ本体が期待する形に変換してから返す。
-      function callTool(server, tool, input) {
-        if (tool === "notion-query-database-view") {
-          var queryDataSourceId = VIEW_TO_DATA_SOURCE[input.view_url];
-          var queryBody = { dataSourceId: queryDataSourceId, page_size: input.page_size };
-          if (input.start_cursor) queryBody.startCursor = input.start_cursor;
-          return bridgeFetch("/query", queryBody).then(function (raw) {
-            var results = raw.results || [];
-            results.forEach(function (row) {
-              if (row && row.id) pageDataSourceMap[normalizeId(row.id)] = queryDataSourceId;
-            });
-            return { payload: { results: results, has_more: raw.hasMore, next_cursor: raw.nextCursor } };
-          });
-        }
-        if (tool === "notion-create-pages") {
-          var createDataSourceId = input.parent && input.parent.data_source_id;
-          var page = input.pages && input.pages[0];
-          return bridgeFetch("/create", {
-            dataSourceId: createDataSourceId,
-            properties: page && page.properties
-          }).then(function (raw) {
-            var created = raw.pages && raw.pages[0];
-            if (created && created.id) pageDataSourceMap[normalizeId(created.id)] = createDataSourceId;
-            return { payload: raw };
-          });
-        }
-        if (tool === "notion-update-page") {
-          return bridgeFetch("/update", {
-            pageId: input.page_id,
-            dataSourceId: pageDataSourceMap[normalizeId(input.page_id)],
-            properties: input.properties
-          }).then(function (raw) {
-            return { payload: raw };
-          });
-        }
-        return Promise.reject({ code: "unsupported_tool", message: "未対応のツールです: " + tool });
-      }
-
-      window.claude = window.claude || {};
-      window.claude.mcp = { callTool: callTool };
-    })();
+const KEY = 'skinlog:data';
+const LocalStore = {
+  async read(){
+    try{
+      if(window.storage){ const r = await window.storage.get(KEY); return r ? JSON.parse(r.value) : null; }
+      const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null;
+    }catch(e){ return null; }
+  },
+  async write(d){
+    try{
+      if(window.storage){ await window.storage.set(KEY, JSON.stringify(d)); return true; }
+      localStorage.setItem(KEY, JSON.stringify(d)); return true;
+    }catch(e){ console.error('ローカル保存に失敗', e); return false; }
   }
+};
 
-  var NOTION_ENABLED = !!(window.claude && window.claude.mcp);
-  var NOTION_SERVER = "Notion";
-  var NOTION_DATA_SOURCE_ID = "fc2e5ae9-bda5-4677-b930-6ba44a2fb6cc";
-  var NOTION_VIEW_URL = "view://" + NOTION_DATA_SOURCE_ID;
+/* ---- notion-bridge 呼び出し ---- */
+async function bridgeFetch(path, body){
+  const res = await fetch(BRIDGE_BASE + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-App-Key": APP_KEY },
+    body: JSON.stringify(body),
+  });
+  if(!res.ok) throw new Error(`bridge ${path} -> ${res.status}`);
+  return res.json();
+}
 
-  var AREA_OPTIONS = ["顔", "頭皮", "首", "腕", "手", "脚", "体幹", "その他"];
-  var SYMPTOM_OPTIONS = ["赤み", "かゆみ", "乾燥・カサつき", "湿疹・ブツブツ", "皮むけ", "腫れ", "かぶれ", "ニキビ", "その他"];
-  var SEVERITY_COLORS = { 1: "#6b8f71", 2: "#8f9c4f", 3: "#c99a3f", 4: "#c17a4f", 5: "#b3546b" };
+async function bridgeQuery(dataSourceId){
+  const j = await bridgeFetch('/query', { dataSourceId });
+  return j.results || [];
+}
+async function bridgeCreate(dataSourceId, properties){
+  return bridgeFetch('/create', { dataSourceId, properties });
+}
+async function bridgeUpdate(dataSourceId, pageId, properties){
+  return bridgeFetch('/update', { dataSourceId, pageId, properties });
+}
 
-  var state = { records: [] };
-  var nextTempId = 1;
+/* ---- Notion(フラット行) <-> アプリ内部形式の変換 ---- */
+function itemFromNotion(row){
+  return {
+    id: row.id, name: row['名前'] || '', cat: row['カテゴリ'] || 'その他',
+    ing: row['主要成分'] || [], status: row['ステータス'] || 'お試し中',
+    start: row['date:投入日:start'] || null, end: row['date:離脱日:start'] || null,
+    opened: row['date:開封日:start'] || null,
+    drug: row['薬剤フラグ'] === '__YES__',
+  };
+}
+function itemToNotion(it){
+  return {
+    '名前': it.name, 'カテゴリ': it.cat, '主要成分': it.ing, 'ステータス': it.status,
+    'date:投入日:start': it.start, 'date:離脱日:start': it.end, 'date:開封日:start': it.opened,
+    '薬剤フラグ': it.drug ? '__YES__' : '__NO__',
+  };
+}
+function routineFromNotion(row){
+  return { id: row.id, name: row['名前'] || '', time: row['時間帯'] || '朝', items: row['アイテム'] || [], active: row['有効'] === '__YES__' };
+}
+function routineToNotion(r){
+  return { '名前': r.name, '時間帯': r.time, 'アイテム': r.items, '有効': r.active !== false ? '__YES__' : '__NO__' };
+}
+function logFromNotion(row){
+  return {
+    date: row['日付'] || '', score: typeof row['肌スコア']==='number' ? row['肌スコア'] : null,
+    am: row['朝完了'] === '__YES__', pm: row['夜完了'] === '__YES__',
+    used: row['使用アイテム'] || [], symptoms: row['症状'] || [],
+    drug: row['薬剤使用'] === '__YES__', applyType: row['塗布種別'] || null,
+    temp: typeof row['気温']==='number' ? row['気温'] : null,
+    humid: typeof row['湿度']==='number' ? row['湿度'] : null,
+    _pageId: row.id,
+  };
+}
+function logToNotion(l){
+  return {
+    '日付': l.date, '肌スコア': l.score, '朝完了': l.am ? '__YES__':'__NO__', '夜完了': l.pm ? '__YES__':'__NO__',
+    '使用アイテム': l.used, '症状': l.symptoms, '薬剤使用': l.drug ? '__YES__':'__NO__',
+    '塗布種別': l.applyType, '気温': l.temp, '湿度': l.humid,
+  };
+}
+function planFromNotion(row){
+  return {
+    id: row.id, name: row['名前'] || '', days: row['塗布曜日'] || [], order: row['医師の指示（原文）'] || '',
+    start: row['date:開始日:start'] || null, status: row['ステータス'] || '実施中',
+    clinic: row['処方元'] || '', next: row['date:次回受診日:start'] || null,
+  };
+}
+function planToNotion(pl){
+  return {
+    '名前': pl.name, '塗布曜日': pl.days, '医師の指示（原文）': pl.order,
+    'date:開始日:start': pl.start, 'ステータス': pl.status,
+    '処方元': pl.clinic, 'date:次回受診日:start': pl.next,
+  };
+}
 
-  function createTempId() { return "temp-" + (nextTempId++); }
-
-  function todayStr() {
-    var d = new Date();
-    var m = String(d.getMonth() + 1).padStart(2, "0");
-    var day = String(d.getDate()).padStart(2, "0");
-    return d.getFullYear() + "-" + m + "-" + day;
-  }
-
-  function extractPageId(url) {
-    var m = /([0-9a-f]{32})(?:\?.*)?$/i.exec(url || "");
-    return m ? m[1] : null;
-  }
-
-  function toLabelArray(value) {
-    if (Array.isArray(value)) return value;
-    if (typeof value === "string" && value) {
-      try { var parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : [value]; }
-      catch (e) { return value.split(","); }
+const NotionStore = {
+  async read(){
+    const [itemPgs, rtPgs, logPgs, planPgs] = await Promise.all([
+      bridgeQuery(DS.items), bridgeQuery(DS.routines), bridgeQuery(DS.logs), bridgeQuery(DS.plans),
+    ]);
+    const items = itemPgs.map(itemFromNotion);
+    const routines = rtPgs.map(routineFromNotion);
+    const plans = planPgs.map(planFromNotion);
+    const logs = {};
+    logPgs.map(logFromNotion).forEach(l => { logs[l.date] = l; });
+    if(!routines.length){
+      routines.push({id:'r_am',name:'朝',time:'朝',items:[],active:true});
+      routines.push({id:'r_pm',name:'夜',time:'夜',items:[],active:true});
     }
-    return [];
-  }
+    return { items, routines, plans, logs };
+  },
 
-  function filterActiveRows(rows) {
-    return rows.filter(function (row) { return row["削除済み"] !== "__YES__"; });
-  }
-
-  function recordToNotionProps(r) {
-    var props = {
-      "記録名": r.date + " " + r.area,
-      "部位": r.area,
-      "症状": r.symptoms,
-      "重症度": r.severity,
-      "きっかけ・トリガー": r.trigger || "",
-      "対処": r.treatment || "",
-      "メモ": r.memo || "",
-      "削除済み": "__NO__"
-    };
-    if (r.date) props["date:記録日:start"] = r.date;
-    return props;
-  }
-
-  function notionRowToRecord(row) {
-    var pageId = extractPageId(row.url);
-    return {
-      id: pageId,
-      notionId: pageId,
-      date: row["date:記録日:start"] || "",
-      area: row["部位"] || AREA_OPTIONS[0],
-      symptoms: toLabelArray(row["症状"]),
-      severity: typeof row["重症度"] === "number" ? row["重症度"] : 3,
-      trigger: row["きっかけ・トリガー"] || "",
-      treatment: row["対処"] || "",
-      memo: row["メモ"] || ""
-    };
-  }
-
-  function setSyncStatus(text, isError) {
-    var el = document.getElementById("syncStatus");
-    el.textContent = text;
-    el.className = "hint" + (isError ? " sync-error" : "");
-  }
-
-  function queryAllViewRows(viewUrl) {
-    function fetchPage(cursor) {
-      var input = { view_url: viewUrl, page_size: 100 };
-      if (cursor) input.start_cursor = cursor;
-      return window.claude.mcp.callTool(NOTION_SERVER, "notion-query-database-view", input).then(function (res) {
-        var payload = res.payload || {};
-        var rows = payload.results || [];
-        if (payload.has_more && payload.next_cursor) {
-          return fetchPage(payload.next_cursor).then(function (rest) { return rows.concat(rest); });
-        }
-        return rows;
-      });
-    }
-    return fetchPage(null);
-  }
-
-  function notionLoadRecords() {
-    return queryAllViewRows(NOTION_VIEW_URL).then(function (rows) {
-      return filterActiveRows(rows).map(notionRowToRecord);
-    });
-  }
-
-  function notionCreatePage(dataSourceId, properties) {
-    return window.claude.mcp.callTool(NOTION_SERVER, "notion-create-pages", {
-      parent: { type: "data_source_id", data_source_id: dataSourceId },
-      pages: [{ properties: properties }]
-    });
-  }
-  function firstCreatedPageId(res) {
-    var created = res.payload && res.payload.pages && res.payload.pages[0];
-    return (created && created.id) || null;
-  }
-  function notionUpdatePage(pageId, properties) {
-    if (!pageId) return Promise.resolve();
-    return window.claude.mcp.callTool(NOTION_SERVER, "notion-update-page", {
-      page_id: pageId,
-      command: "update_properties",
-      properties: properties
-    });
-  }
-  function notionSoftDelete(pageId) {
-    return notionUpdatePage(pageId, { "削除済み": "__YES__" });
-  }
-
-  function syncCreate(record) {
-    if (!NOTION_ENABLED) return;
-    setSyncStatus("Notionに同期しています…");
-    notionCreatePage(NOTION_DATA_SOURCE_ID, recordToNotionProps(record)).then(function (res) {
-      var id = firstCreatedPageId(res);
-      if (id) { record.id = id; record.notionId = id; }
-      setSyncStatus("Notionと同期中(他の端末からも同じデータが見えます)");
-    }).catch(function (err) {
-      setSyncStatus("記録の同期に失敗しました(" + (err && err.code) + ")", true);
-    });
-  }
-
-  function syncDelete(record) {
-    if (!NOTION_ENABLED) return;
-    notionSoftDelete(record.notionId).catch(function (err) {
-      setSyncStatus("削除の同期に失敗しました(" + (err && err.code) + ")", true);
-    });
-  }
-
-  // ---------- Render ----------
-  function renderAreaOptions() {
-    var sel = document.getElementById("areaSelect");
-    sel.innerHTML = "";
-    AREA_OPTIONS.forEach(function (a) {
-      var opt = document.createElement("option");
-      opt.value = a; opt.textContent = a;
-      sel.appendChild(opt);
-    });
-  }
-
-  function renderSymptomGrid() {
-    var wrap = document.getElementById("symptomGrid");
-    wrap.innerHTML = "";
-    SYMPTOM_OPTIONS.forEach(function (s) {
-      var label = document.createElement("label");
-      label.className = "check-item";
-      var cb = document.createElement("input");
-      cb.type = "checkbox"; cb.value = s;
-      cb.addEventListener("change", function () { label.classList.toggle("checked", cb.checked); });
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(s));
-      wrap.appendChild(label);
-    });
-  }
-
-  var selectedSeverity = 3;
-  function renderSeverityRow() {
-    var wrap = document.getElementById("severityRow");
-    wrap.innerHTML = "";
-    for (var i = 1; i <= 5; i++) {
-      (function (n) {
-        var btn = document.createElement("div");
-        btn.className = "severity-btn" + (n === selectedSeverity ? " selected" : "");
-        btn.textContent = n;
-        if (n === selectedSeverity) btn.style.background = SEVERITY_COLORS[n];
-        btn.addEventListener("click", function () {
-          selectedSeverity = n;
-          renderSeverityRow();
-        });
-        wrap.appendChild(btn);
-      })(i);
+  async write(d){
+    try{
+      await Promise.all(d.items.map(it =>
+        it.id && it.id.length > 20 ? bridgeUpdate(DS.items, it.id, itemToNotion(it)) : bridgeCreate(DS.items, itemToNotion(it))
+      ));
+      await Promise.all(d.routines.filter(r=>!r.id.startsWith('r_')).map(r =>
+        bridgeUpdate(DS.routines, r.id, routineToNotion(r))
+      ));
+      await Promise.all(Object.values(d.logs).map(l =>
+        l._pageId ? bridgeUpdate(DS.logs, l._pageId, logToNotion(l)) : bridgeCreate(DS.logs, logToNotion(l))
+      ));
+      await Promise.all(d.plans.map(pl =>
+        pl.id && pl.id.length > 20 ? bridgeUpdate(DS.plans, pl.id, planToNotion(pl)) : bridgeCreate(DS.plans, planToNotion(pl))
+      ));
+      await LocalStore.write(d);
+      return true;
+    }catch(e){
+      console.error('Notion同期に失敗。ローカルのみ保存します', e);
+      await LocalStore.write(d);
+      return false;
     }
   }
+};
 
-  function getCheckedSymptoms() {
-    var boxes = document.querySelectorAll("#symptomGrid input[type=checkbox]:checked");
-    return Array.prototype.map.call(boxes, function (b) { return b.value; });
+const Store = NotionStore;
+
+/* ---- 定数 ---- */
+const WD = ['日','月','火','水','木','金','土'];
+const CATS = ['洗顔','化粧水','美容液','乳液・クリーム','日焼け止め','外用薬（処方）','その他'];
+const INGREDIENTS = ['レチノール','ナイアシンアミド','ビタミンC誘導体','AHA','BHA','セラミド','ヒアルロン酸','トラネキサム酸','アゼライン酸'];
+const SYMPTOMS = ['乾燥','テカり','赤み','ニキビ','ヒリつき','かゆみ'];
+const SCORE_COLOR = {1:'var(--s1)',2:'var(--s2)',3:'var(--s3)',4:'var(--s4)',5:'var(--s5)'};
+const SCORE_HEX = {1:'#B4655A',2:'#BE8A70',3:'#B0B5A9',4:'#6E9B85',5:'#26695A'};
+
+const CONFLICT_RULES = [
+  {a:'レチノール',b:'AHA',level:'caution',note:'同時に使うと刺激が出やすい組み合わせです。曜日を分ける使い方がよく取られます。'},
+  {a:'レチノール',b:'BHA',level:'caution',note:'同上。夜はどちらか一方にするのが一般的です。'},
+  {a:'AHA',b:'BHA',level:'caution',note:'角質ケアが重なります。乾燥やバリア低下に注意してください。'},
+  {a:'レチノール',b:'ビタミンC誘導体',level:'info',note:'朝にビタミンC、夜にレチノールと時間帯を分ける使い方が一般的です。'},
+];
+
+let D = null;
+let tab = 'today';
+const todayStr = () => new Date().toISOString().slice(0,10);
+const dstr = d => d.toISOString().slice(0,10);
+const addDays = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return dstr(d); };
+const uid = () => Math.random().toString(36).slice(2,9);
+
+function blank(){
+  return {
+    items:[], routines:[
+      {id:'r_am',name:'朝',time:'朝',items:[],active:true},
+      {id:'r_pm',name:'夜',time:'夜',items:[],active:true}
+    ], plans:[], logs:{}
+  };
+}
+function log(date){
+  if(!D.logs[date]) D.logs[date] = {date,score:null,am:false,pm:false,used:[],symptoms:[],drug:false,applyType:null,temp:null,humid:null};
+  return D.logs[date];
+}
+const save = () => Store.write(D);
+
+async function fetchWeather(){
+  try{
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.7595&longitude=135.5158&current=temperature_2m,relative_humidity_2m&timezone=Asia%2FTokyo');
+    const j = await r.json();
+    return {temp:j.current?.temperature_2m ?? null, humid:j.current?.relative_humidity_2m ?? null};
+  }catch(e){ return {temp:null,humid:null}; }
+}
+
+function sortedLogs(){ return Object.values(D.logs).filter(l=>l.score!=null).sort((a,b)=>a.date<b.date?-1:1); }
+
+function flareDays(){
+  const ls = sortedLogs(); if(ls.length<10) return [];
+  const out=[]; let runLow=[], runSym=[];
+  ls.forEach((l,i)=>{
+    const win = ls.slice(Math.max(0,i-28),i);
+    const avg = win.length>=7 ? win.reduce((s,x)=>s+x.score,0)/win.length : null;
+    if(avg!=null && l.score <= avg-1) runLow.push(l.date); else { if(runLow.length>=2) out.push(...runLow); runLow=[]; }
+    const bad = l.symptoms.some(s=>s==='赤み'||s==='ヒリつき');
+    if(bad) runSym.push(l.date); else { if(runSym.length>=3) out.push(...runSym); runSym=[]; }
+  });
+  if(runLow.length>=2) out.push(...runLow);
+  if(runSym.length>=3) out.push(...runSym);
+  return [...new Set(out)].sort();
+}
+
+function itemEffects(){
+  const ls = sortedLogs().filter(l=>!l.drug);
+  return D.items.filter(it=>!it.drug).map(it=>{
+    const on = ls.filter(l=>l.used.includes(it.id));
+    const off = ls.filter(l=>!l.used.includes(it.id));
+    if(on.length<5||off.length<5) return null;
+    const m = a => a.reduce((s,x)=>s+x.score,0)/a.length;
+    return {item:it, on:on.length, off:off.length, diff:m(on)-m(off), mOn:m(on)};
+  }).filter(Boolean).sort((a,b)=>b.diff-a.diff);
+}
+
+function trialCompare(it){
+  if(!it.start) return null;
+  const ls = sortedLogs().filter(l=>!l.drug);
+  const before = ls.filter(l=>l.date<it.start && l.date>=addDays(it.start,-28));
+  const after  = ls.filter(l=>l.date>=addDays(it.start,14));
+  const m = a => a.length ? a.reduce((s,x)=>s+x.score,0)/a.length : null;
+  return {before:m(before), after:m(after), nB:before.length, nA:after.length,
+          days:Math.round((new Date(todayStr())-new Date(it.start))/864e5)};
+}
+
+function proStats(){
+  const plans = D.plans.filter(p=>p.status==='実施中');
+  if(!plans.length) return null;
+  const cells=[]; let sched=0, done=0;
+  for(let i=55;i>=0;i--){
+    const d = addDays(todayStr(),-i);
+    const wd = WD[new Date(d+'T00:00:00').getDay()];
+    const isSched = plans.some(p=>p.days.includes(wd) && (!p.start||d>=p.start));
+    const l = D.logs[d];
+    const isDone = !!(l && l.applyType==='プロアクティブ');
+    if(isSched){ sched++; if(isDone) done++; }
+    cells.push({d, sched:isSched, done:isDone, future:d>todayStr()});
   }
+  return {cells, sched, done, rate: sched? Math.round(done/sched*100):0};
+}
 
-  function renderEntryList() {
-    var wrap = document.getElementById("entryList");
-    wrap.innerHTML = "";
-    var sorted = state.records.slice().sort(function (a, b) {
-      return (b.date || "").localeCompare(a.date || "");
-    });
-    if (!sorted.length) {
-      var empty = document.createElement("p");
-      empty.className = "empty";
-      empty.textContent = "まだ記録がありません。";
-      wrap.appendChild(empty);
-      return;
+function activeConflicts(){
+  const using = D.items.filter(i=>i.status==='お試し中'||i.status==='定番');
+  const out=[];
+  CONFLICT_RULES.forEach(r=>{
+    const A = using.filter(i=>i.ing.includes(r.a));
+    const B = using.filter(i=>i.ing.includes(r.b));
+    if(A.length&&B.length&&!(A.length===1&&B.length===1&&A[0].id===B[0].id))
+      out.push({...r, names:[...new Set([...A,...B].map(i=>i.name))]});
+  });
+  return out;
+}
+
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = s => document.querySelector(s);
+
+function renderBand(){
+  const N = 56, box = $('#stripes'); box.innerHTML='';
+  const flares = new Set(flareDays());
+  let filled = 0;
+  for(let i=N-1;i>=0;i--){
+    const d = addDays(todayStr(),-i), l = D.logs[d];
+    const el = document.createElement('div');
+    el.className = 'stripe' + (i===0?' today':'') + (flares.has(d)?' flare':'');
+    if(l && l.score){
+      filled++;
+      el.style.background = SCORE_HEX[l.score];
+      el.style.height = (34 + l.score*2.4) + '%';
     }
-    sorted.forEach(function (r) {
-      var entry = document.createElement("div");
-      entry.className = "entry";
+    if(l && l.drug){ const dot=document.createElement('span'); dot.className='drug-dot'; el.appendChild(dot); }
+    el.title = d;
+    box.appendChild(el);
+  }
+  $('#bandCount').textContent = filled ? `${filled} / ${N} 日` : '';
+  $('#bandFrom').textContent = addDays(todayStr(),-(N-1)).slice(5).replace('-','/');
+}
 
-      var head = document.createElement("div");
-      head.className = "entry-head";
-      var left = document.createElement("div");
-      var dateEl = document.createElement("span");
-      dateEl.className = "date"; dateEl.textContent = r.date || "(日付未設定)";
-      left.appendChild(dateEl);
-      var areaBadge = document.createElement("span");
-      areaBadge.className = "badge area-badge"; areaBadge.textContent = r.area;
-      areaBadge.style.marginLeft = "8px";
-      left.appendChild(areaBadge);
-      head.appendChild(left);
+function renderToday(){
+  const d = todayStr(), l = log(d), dt = new Date(d+'T00:00:00');
+  const itemName = id => (D.items.find(i=>i.id===id)||{}).name || '';
+  const rt = D.routines.map(r=>{
+    const on = r.time==='朝' ? l.am : l.pm;
+    const names = r.items.map(itemName).filter(Boolean);
+    return `<button class="rt ${on?'on':''}" data-rt="${r.id}">
+      <span class="rt-mark">${r.time==='朝'?'☀':'☾'}</span>
+      <span class="rt-name">${esc(r.name)}</span>
+      <span class="rt-items">${names.length?esc(names.join(' / ')):'アイテム未設定'}</span>
+    </button>`;
+  }).join('');
 
-      var sevBadge = document.createElement("span");
-      sevBadge.className = "badge severity-badge";
-      sevBadge.style.background = SEVERITY_COLORS[r.severity] || "#999";
-      sevBadge.textContent = r.severity;
-      head.appendChild(sevBadge);
-      entry.appendChild(head);
-
-      if (r.symptoms && r.symptoms.length) {
-        var chips = document.createElement("div");
-        chips.className = "symptom-chips";
-        r.symptoms.forEach(function (s) {
-          var chip = document.createElement("span");
-          chip.className = "symptom-chip"; chip.textContent = s;
-          chips.appendChild(chip);
-        });
-        entry.appendChild(chips);
-      }
-
-      var detail = document.createElement("div");
-      detail.className = "entry-detail";
-      [["きっかけ・トリガー", r.trigger], ["対処", r.treatment], ["メモ", r.memo]].forEach(function (pair) {
-        if (!pair[1]) return;
-        var line = document.createElement("div");
-        var labelSpan = document.createElement("span");
-        labelSpan.className = "label"; labelSpan.textContent = pair[0] + ": ";
-        line.appendChild(labelSpan);
-        line.appendChild(document.createTextNode(pair[1]));
-        detail.appendChild(line);
-      });
-      if (detail.childNodes.length) entry.appendChild(detail);
-
-      var actions = document.createElement("div");
-      actions.className = "entry-actions";
-      var rm = document.createElement("button");
-      rm.type = "button"; rm.className = "secondary"; rm.textContent = "削除";
-      rm.addEventListener("click", function () {
-        state.records = state.records.filter(function (x) { return x.id !== r.id; });
-        renderEntryList();
-        syncDelete(r);
-      });
-      actions.appendChild(rm);
-      entry.appendChild(actions);
-
-      wrap.appendChild(entry);
-    });
+  const wd = WD[dt.getDay()];
+  const plan = D.plans.find(p=>p.status==='実施中' && p.days.includes(wd) && (!p.start||d>=p.start));
+  let proHtml = '';
+  if(plan){
+    const done = l.applyType==='プロアクティブ';
+    proHtml = `<div class="pro-card ${done?'done':''}">
+      <div class="pro-body">
+        <div class="pro-title">${done?'塗布を記録しました':'今日は塗布日です'}</div>
+        <div class="pro-sub">${esc(plan.name)}</div>
+      </div>
+      <button class="btn ${done?'':'btn-primary'}" data-pro="${plan.id}">${done?'取り消す':'塗った'}</button>
+    </div>`;
   }
 
-  function renderAll() {
-    renderEntryList();
+  const scale = [1,2,3,4,5].map(n=>`
+    <button class="sc ${l.score===n?'on':''}" data-score="${n}" aria-label="肌スコア ${n}">
+      <span class="dot" style="background:${SCORE_COLOR[n]}"></span>
+      <span class="lb">${n}</span>
+    </button>`).join('');
+
+  const weather = (l.temp!=null||l.humid!=null)
+    ? `<span class="num">${l.temp!=null?l.temp+'℃':'—'} ／ 湿度 ${l.humid!=null?l.humid+'%':'—'}</span>` : '取得待ち';
+
+  $('#view').innerHTML = `
+    <div class="today-head">
+      <div class="today-date">${dt.getMonth()+1}月${dt.getDate()}日<span style="font-size:15px;font-weight:400;color:var(--muted)">（${wd}）</span></div>
+      <div class="today-sub">${d.replace(/-/g,'.')}　${weather}</div>
+    </div>
+
+    <div class="eyebrow">ルーティン</div>
+    <div class="routines">${rt}</div>
+    ${proHtml}
+
+    <div class="eyebrow">今日の肌</div>
+    <div class="scale">${scale}</div>
+    <div class="scale-ends"><span>調子が悪い</span><span>調子が良い</span></div>
+
+    <details class="extra">
+      <summary>気になることを残す（任意）</summary>
+      <div class="tags">
+        ${SYMPTOMS.map(s=>`<button class="tag ${l.symptoms.includes(s)?'on':''}" data-sym="${s}">${s}</button>`).join('')}
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn" data-adhoc="1">${l.applyType==='リアクティブ'?'✓ 臨時で薬を塗った':'臨時で薬を塗った'}</button>
+      </div>
+    </details>
+
+    <div class="notice">記録は3タップで終わります。使ったアイテムはルーティンから自動で入るため、選ぶ必要はありません。</div>
+  `;
+}
+
+function renderVerify(){
+  const ls = sortedLogs();
+  if(ls.length<10){
+    $('#view').innerHTML = `<div class="empty">記録が10日分たまると、ここに効果の比較が出ます。<br>いまは <b class="num">${ls.length}</b> 日分です。
+      <div style="margin-top:18px"><button class="btn" data-demo="1">デモデータで動きを見る</button></div></div>`;
+    return;
+  }
+  const excluded = ls.filter(l=>l.drug).length;
+  const eff = itemEffects();
+  const pro = proStats();
+  const flares = flareDays().slice(-8).reverse();
+  const trials = D.items.filter(i=>i.status==='お試し中'&&!i.drug);
+
+  const maxAbs = Math.max(0.35, ...eff.map(e=>Math.abs(e.diff)));
+  const effHtml = eff.length ? eff.map(e=>{
+    const w = Math.abs(e.diff)/maxAbs*50, pos = e.diff>=0;
+    return `<div class="bar-row">
+      <span class="bar-name">${esc(e.item.name)}</span>
+      <span class="bar-track"><span class="bar-fill" style="left:${pos?50:50-w}%;width:${w}%;background:${pos?'var(--accent)':'var(--warn)'}"></span></span>
+      <span class="bar-n">${e.diff>=0?'+':''}${e.diff.toFixed(2)}</span>
+    </div>`;
+  }).join('') : `<div class="muted">比較できるアイテムがまだありません。使用日・非使用日ともに5日以上たまると出ます。</div>`;
+
+  const trialHtml = trials.map(it=>{
+    const c = trialCompare(it);
+    if(!c) return '';
+    if(c.after==null) return `<div class="card"><div class="item-n">${esc(it.name)}</div>
+      <div class="muted" style="margin-top:6px">投入から <b class="num">${c.days}</b> 日。効果の判定は投入14日目以降のデータで行うため、まだ比較していません。</div></div>`;
+    const d = c.after - (c.before ?? c.after);
+    const cls = Math.abs(d)<0.15?'flat':(d>0?'up':'down');
+    return `<div class="card">
+      <div class="item-n">${esc(it.name)}</div>
+      <div class="metric" style="margin-top:8px">
+        <span class="metric-v">${c.after.toFixed(2)}</span>
+        <span class="metric-u">投入14日目以降の平均</span>
+        <span class="delta ${cls}">${d>=0?'+':''}${d.toFixed(2)}</span>
+      </div>
+      <div class="muted" style="margin-top:6px">投入前28日 ${c.before?c.before.toFixed(2):'—'}（${c.nB}日） → 投入後 ${c.after.toFixed(2)}（${c.nA}日）</div>
+    </div>`;
+  }).join('');
+
+  let proHtml = '';
+  if(pro){
+    const cols=[]; for(let i=0;i<8;i++) cols.push(pro.cells.slice(i*7,i*7+7));
+    proHtml = `
+      <div class="eyebrow">プロアクティブ塗布の実施</div>
+      <div class="card">
+        <div class="metric"><span class="metric-v">${pro.done}<span style="font-size:16px;color:var(--muted)">/${pro.sched}</span></span>
+          <span class="metric-u">直近8週の予定日に対して</span></div>
+        <div class="heat">${cols.map(c=>`<div class="heat-col">${
+          c.map(x=>`<div class="hc ${x.future?'':(x.done?'done':(x.sched?'miss':(x.sched?'sched':'')))}" title="${x.d}"></div>`).join('')
+        }</div>`).join('')}</div>
+        <div class="legend">
+          <span><i style="background:var(--drug)"></i>実施</span>
+          <span><i style="background:var(--warn-soft);border:1px solid var(--warn)"></i>予定日・未記録</span>
+          <span><i style="background:var(--surface-2)"></i>予定外</span>
+        </div>
+      </div>`;
   }
 
-  function init() {
-    renderAreaOptions();
-    renderSymptomGrid();
-    renderSeverityRow();
-    document.getElementById("recordDate").value = todayStr();
+  const flareHtml = flares.length ? flares.map(d=>{
+    const l = D.logs[d];
+    const changed = D.items.filter(i=>i.start && Math.abs(new Date(d)-new Date(i.start))<14*864e5);
+    return `<div class="flare-item">
+      <span class="flare-d num">${d.slice(5).replace('-','/')}</span>
+      <span style="flex:1;font-size:12.5px">スコア ${l.score}${l.symptoms.length?'／'+esc(l.symptoms.join('・')):''}
+        ${changed.length?`<br><span class="muted">前後2週で変えたもの：${esc(changed.map(i=>i.name).join('、'))}</span>`:''}</span>
+    </div>`;
+  }).join('') : `<div class="muted">目立つ変化は見つかりませんでした。</div>`;
 
-    document.getElementById("addRecordBtn").addEventListener("click", function () {
-      var date = document.getElementById("recordDate").value || todayStr();
-      var area = document.getElementById("areaSelect").value || AREA_OPTIONS[0];
-      var symptoms = getCheckedSymptoms();
-      var trigger = document.getElementById("triggerInput").value.trim();
-      var treatment = document.getElementById("treatmentInput").value.trim();
-      var memo = document.getElementById("memoInput").value.trim();
+  $('#view').innerHTML = `
+    ${excluded ? `<div class="notice" style="margin-top:22px">対象 ${ls.length} 日のうち <b class="num">${excluded}</b> 日を、薬剤を使った日として効果比較から除外しています。薬の影響でスキンケアの評価が上振れするのを避けるためです。</div>`:''}
 
-      var r = {
-        id: createTempId(), notionId: null,
-        date: date, area: area, symptoms: symptoms, severity: selectedSeverity,
-        trigger: trigger, treatment: treatment, memo: memo
-      };
-      state.records.push(r);
-      renderAll();
-      syncCreate(r);
+    ${trials.length?`<div class="eyebrow">お試し中</div>${trialHtml}`:''}
 
-      document.getElementById("triggerInput").value = "";
-      document.getElementById("treatmentInput").value = "";
-      document.getElementById("memoInput").value = "";
-      document.querySelectorAll("#symptomGrid input[type=checkbox]").forEach(function (cb) {
-        cb.checked = false;
-        cb.parentElement.classList.remove("checked");
-      });
-      selectedSeverity = 3;
-      renderSeverityRow();
-    });
+    <div class="eyebrow">使った日と使わなかった日の差</div>
+    <div class="card">${effHtml}</div>
+    <div class="muted">スコアの平均差だけを並べています。季節・体調・他のアイテムの影響は分けられていないので、順位はあくまで見当をつけるためのものです。</div>
 
-    if (NOTION_ENABLED) {
-      setSyncStatus("Notionから読み込んでいます…");
-      notionLoadRecords().then(function (records) {
-        state.records = records;
-        renderAll();
-        setSyncStatus("Notionと同期中(他の端末からも同じデータが見えます)");
-      }).catch(function (err) {
-        setSyncStatus("Notionからの読み込みに失敗しました(" + (err && err.code) + ")。ページを再読み込みしてください。", true);
-        renderAll();
-      });
-    } else {
-      setSyncStatus("ローカルモードです(このページを閉じるとデータは消えます)");
-      renderAll();
+    ${proHtml}
+
+    <div class="eyebrow">変化が続いた日</div>
+    <div class="card">${flareHtml}</div>
+    <div class="muted">気になる変化が続いているときは、この記録を持って受診の際に相談すると状況を伝えやすくなります。</div>
+
+    <div class="eyebrow">受診サマリー</div>
+    <div class="card">
+      <div class="muted">実施率・スコア推移・変化が続いた日を1枚にまとめて印刷できます。</div>
+      <button class="btn" style="margin-top:12px" onclick="window.print()">印刷する</button>
+    </div>
+    <div style="height:20px"></div>
+  `;
+}
+
+function renderShelf(){
+  const groups = [['お試し中','trial'],['定番',''],['休止中',''],['終了','']];
+  const drugs = D.items.filter(i=>i.drug);
+  const body = groups.map(([g,cls])=>{
+    const list = D.items.filter(i=>i.status===g && !i.drug);
+    if(!list.length) return '';
+    return `<div class="eyebrow">${g}</div><div class="card">${list.map(i=>`
+      <div class="item">
+        <div class="item-b">
+          <div class="item-n">${esc(i.name)}</div>
+          <div class="item-m">${esc(i.cat)}${i.ing.length?'　'+esc(i.ing.join('・')):''}${i.start?`　投入 ${i.start.slice(5).replace('-','/')}`:''}</div>
+        </div>
+        <span class="pill ${cls}">${g}</span>
+        <button class="btn-ghost" data-edit="${i.id}">編集</button>
+      </div>`).join('')}</div>`;
+  }).join('');
+
+  const planHtml = D.plans.length ? D.plans.map(p=>`
+    <div class="item">
+      <div class="item-b">
+        <div class="item-n">${esc(p.name)}</div>
+        <div class="item-m">${esc(p.days.join('・'))}曜　${esc(p.status)}</div>
+        <div class="item-m" style="margin-top:3px">指示：${esc(p.order||'—')}</div>
+      </div>
+      <button class="btn-ghost" data-editplan="${p.id}">編集</button>
+    </div>`).join('') : `<div class="muted">医師から指示されている塗布の計画があれば登録してください。曜日は指示の内容に合わせてご自身で設定します。</div>`;
+
+  $('#view').innerHTML = `
+    <div class="eyebrow">アイテム</div>
+    <button class="btn" data-add="1" style="width:100%;margin-bottom:6px">アイテムを追加</button>
+    ${body || `<div class="empty">まだ何も登録されていません。</div>`}
+
+    ${drugs.length?`<div class="eyebrow">外用薬</div><div class="card">${drugs.map(i=>`
+      <div class="item"><div class="item-b"><div class="item-n">${esc(i.name)}</div>
+      <div class="item-m">${esc(i.status)}</div></div><span class="pill drug">処方</span>
+      <button class="btn-ghost" data-edit="${i.id}">編集</button></div>`).join('')}</div>`:''}
+
+    <div class="eyebrow">プロアクティブ計画</div>
+    <div class="card">${planHtml}</div>
+    <button class="btn" data-addplan="1" style="width:100%">計画を追加</button>
+
+    <div class="eyebrow">ルーティン</div>
+    <div class="card">${D.routines.map(r=>`
+      <div class="item"><div class="item-b"><div class="item-n">${esc(r.name)}</div>
+      <div class="item-m">${r.items.length?esc(r.items.map(id=>(D.items.find(i=>i.id===id)||{}).name).filter(Boolean).join('、')):'未設定'}</div></div>
+      <button class="btn-ghost" data-editrt="${r.id}">編集</button></div>`).join('')}</div>
+    <div style="height:20px"></div>
+  `;
+}
+
+function renderRef(){
+  const cf = activeConflicts();
+  $('#view').innerHTML = `
+    <div class="eyebrow">いま使っているものの組み合わせ</div>
+    <div class="card">
+      ${cf.length ? cf.map(c=>`<div class="conflict ${c.level==='info'?'info':''}">
+        <div class="conflict-h">${esc(c.a)} と ${esc(c.b)}</div>
+        <div class="muted" style="margin-top:3px">${esc(c.note)}</div>
+        <div class="muted" style="margin-top:3px">該当：${esc(c.names.join('、'))}</div>
+      </div>`).join('') : `<div class="muted">気をつけたい組み合わせは見つかりませんでした。</div>`}
+    </div>
+
+    <div class="eyebrow">ステロイド外用薬の基礎</div>
+    <div class="card ref">
+      <dl>
+        <dt>強さは5段階に分かれています</dt>
+        <dd>強い順に、ストロンゲスト／ベリーストロング／ストロング／ミディアム（マイルド）／ウィークの5段階です。どれを使うかは部位・年齢・症状で変わるため、処方されたものを指示どおりに使ってください。</dd>
+        <div class="rank">
+          <div style="background:#5B2E27">I<br>ストロンゲスト</div>
+          <div style="background:#7A4038">II<br>ベリーストロング</div>
+          <div style="background:#9E5A4E">III<br>ストロング</div>
+          <div style="background:#B98577">IV<br>ミディアム</div>
+          <div style="background:#CBA79C">V<br>ウィーク</div>
+        </div>
+
+        <dt>塗る量の目安（1FTU）</dt>
+        <dd>人差し指の先から第一関節までチューブから出した量が約1FTU（およそ0.5g）で、大人の手のひら2枚分の面積に塗る量にあたります。実際には量が少なすぎることのほうが多いと言われます。</dd>
+
+        <dt>部位によって吸収されやすさが違います</dt>
+        <dd>前腕の内側を1とすると、頬などの顔はおよそ13倍、頭皮は約3.5倍、手のひらは約0.8倍、足の裏は約0.1倍とされます。顔に体用の強いものを流用しない理由がここにあります。</dd>
+
+        <dt>やめ方は自己判断で決めない</dt>
+        <dd>急に中止すると症状が再燃することがあります。減らし方や、症状が落ち着いたあとに週2回程度続ける方法（プロアクティブ療法）の進め方は、処方元の指示に従ってください。</dd>
+
+        <dt>長く不適切に使ったときに起こりうること</dt>
+        <dd>皮膚が薄くなる、毛細血管が目立つ、口の周りの皮膚炎、にきびのような発疹、細菌や真菌の感染が悪化する、などが知られています。特に顔への長期の連用は注意が必要です。</dd>
+
+        <dt>保湿剤は薬の代わりではありません</dt>
+        <dd>保湿剤は外用薬と併用するものです。塗る順番に迷う場合は処方元に確認してください。</dd>
+      </dl>
+    </div>
+
+    <div class="notice">
+      ここに表示しているのは一般的な参考情報です。使っている薬の量・期間・やめ方は、必ず処方元の医師や薬剤師の指示に従ってください。症状が悪化する場合や判断に迷う場合は受診してください。<br><br>
+      このアプリは、薬や製品をすすめたり、使用量や減らし方を計算したり、症状の重さを判定したりはしません。
+    </div>
+    <div style="height:20px"></div>
+  `;
+}
+
+function render(){
+  renderBand();
+  ({today:renderToday, verify:renderVerify, shelf:renderShelf, ref:renderRef})[tab]();
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.t===tab));
+  window.scrollTo(0,0);
+}
+
+/* ---- シート（追加・編集） ---- */
+function sheet(html){
+  const bg = document.createElement('div');
+  bg.className='sheet-bg';
+  bg.innerHTML = `<div class="sheet">${html}</div>`;
+  bg.addEventListener('click', e=>{ if(e.target===bg) bg.remove(); });
+  document.body.appendChild(bg);
+  return bg;
+}
+function multi(name, opts, sel){
+  return `<div class="chips">${opts.map(o=>`<button class="chip ${sel.includes(o)?'on':''}" data-multi="${name}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+}
+
+function itemSheet(id){
+  const it = D.items.find(i=>i.id===id) || {id:null,name:'',cat:'化粧水',ing:[],status:'お試し中',start:todayStr(),end:null,drug:false,opened:null};
+  const bg = sheet(`
+    <h3>${id?'アイテムを編集':'アイテムを追加'}</h3>
+    <div class="field"><label>商品名</label><input type="text" id="f_name" value="${esc(it.name)}" placeholder="例）〇〇 モイスチャーローション"></div>
+    <div class="field"><label>カテゴリ</label><select id="f_cat">${CATS.map(c=>`<option ${c===it.cat?'selected':''}>${c}</option>`).join('')}</select></div>
+    <div class="field"><label>主要成分</label>${multi('ing', INGREDIENTS, it.ing)}</div>
+    <div class="field"><label>ステータス</label><select id="f_status">${['お試し中','定番','休止中','終了'].map(s=>`<option ${s===it.status?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="field"><label>投入日（効果を見る起点になります）</label><input type="date" id="f_start" value="${it.start||''}"></div>
+    <div class="field"><label>開封日</label><input type="date" id="f_opened" value="${it.opened||''}"></div>
+    <div class="sheet-act">
+      ${id?`<button class="btn" id="f_del">削除</button>`:''}
+      <button class="btn btn-primary" id="f_ok">保存</button>
+    </div>
+  `);
+  let ing = [...it.ing];
+  bg.addEventListener('click', async e=>{
+    const m = e.target.closest('[data-multi]');
+    if(m){ const v=m.dataset.v; ing.includes(v)?ing.splice(ing.indexOf(v),1):ing.push(v); m.classList.toggle('on'); }
+    if(e.target.id==='f_del'){ D.items = D.items.filter(i=>i.id!==id); await save(); bg.remove(); render(); }
+    if(e.target.id==='f_ok'){
+      const name = bg.querySelector('#f_name').value.trim();
+      if(!name){ toast('商品名を入れてください'); return; }
+      const cat = bg.querySelector('#f_cat').value;
+      const status = bg.querySelector('#f_status').value;
+      const prev = it.status;
+      const rec = {...it, id: it.id||uid(), name, cat, ing, status,
+        start: bg.querySelector('#f_start').value||null,
+        opened: bg.querySelector('#f_opened').value||null,
+        drug: cat==='外用薬（処方）'};
+      if(status==='終了' && prev!=='終了' && !rec.end) rec.end = todayStr();
+      if(status!=='終了') rec.end = null;
+      if(it.id) D.items = D.items.map(i=>i.id===it.id?rec:i); else D.items.push(rec);
+      await save(); bg.remove(); render();
     }
+  });
+}
+
+function planSheet(id){
+  const p = D.plans.find(x=>x.id===id) || {id:null,name:'',days:[],order:'',start:todayStr(),status:'実施中',clinic:'',next:null};
+  const bg = sheet(`
+    <h3>${id?'計画を編集':'プロアクティブ計画'}</h3>
+    <div class="field"><label>部位と薬の名前</label><input type="text" id="p_name" value="${esc(p.name)}" placeholder="例）顔（〇〇軟膏）"></div>
+    <div class="field"><label>医師の指示（そのまま書き写してください）</label>
+      <textarea id="p_order" placeholder="例）症状が落ち着いたら週2回、月曜と木曜の夜に薄く。次回2週間後に確認。">${esc(p.order)}</textarea></div>
+    <div class="field"><label>塗布する曜日（指示に合わせて設定）</label>${multi('days', WD, p.days)}</div>
+    <div class="field"><label>開始日</label><input type="date" id="p_start" value="${p.start||''}"></div>
+    <div class="field"><label>処方元</label><input type="text" id="p_clinic" value="${esc(p.clinic)}" placeholder="例）〇〇皮膚科"></div>
+    <div class="field"><label>次回受診日</label><input type="date" id="p_next" value="${p.next||''}"></div>
+    <div class="field"><label>状態</label><select id="p_status">${['実施中','休止','終了'].map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="notice" style="margin-top:0">頻度や期間はアプリでは決めません。医師の指示をそのまま記録し、その遂行を支えるための画面です。</div>
+    <div class="sheet-act">
+      ${id?`<button class="btn" id="p_del">削除</button>`:''}
+      <button class="btn btn-primary" id="p_ok">保存</button>
+    </div>
+  `);
+  let days = [...p.days];
+  bg.addEventListener('click', async e=>{
+    const m = e.target.closest('[data-multi]');
+    if(m){ const v=m.dataset.v; days.includes(v)?days.splice(days.indexOf(v),1):days.push(v); m.classList.toggle('on'); }
+    if(e.target.id==='p_del'){ D.plans = D.plans.filter(x=>x.id!==id); await save(); bg.remove(); render(); }
+    if(e.target.id==='p_ok'){
+      const name = bg.querySelector('#p_name').value.trim();
+      if(!name){ toast('名前を入れてください'); return; }
+      const rec = {...p, id:p.id||uid(), name, days,
+        order: bg.querySelector('#p_order').value.trim(),
+        start: bg.querySelector('#p_start').value||null,
+        clinic: bg.querySelector('#p_clinic').value.trim(),
+        next: bg.querySelector('#p_next').value||null,
+        status: bg.querySelector('#p_status').value};
+      if(p.id) D.plans = D.plans.map(x=>x.id===p.id?rec:x); else D.plans.push(rec);
+      await save(); bg.remove(); render();
+    }
+  });
+}
+
+function routineSheet(id){
+  const r = D.routines.find(x=>x.id===id);
+  const bg = sheet(`
+    <h3>${esc(r.name)}のルーティン</h3>
+    <div class="muted" style="margin-bottom:12px">ここで選んだアイテムが、ボタンを押した日の使用記録に自動で入ります。</div>
+    <div class="chips">${D.items.filter(i=>i.status==='お試し中'||i.status==='定番').map(i=>
+      `<button class="chip ${r.items.includes(i.id)?'on':''}" data-rti="${i.id}">${esc(i.name)}</button>`).join('')
+      || '<span class="muted">使用中のアイテムがありません。先に棚で追加してください。</span>'}</div>
+    <div class="sheet-act"><button class="btn btn-primary" id="rt_ok">保存</button></div>
+  `);
+  let sel = [...r.items];
+  bg.addEventListener('click', async e=>{
+    const c = e.target.closest('[data-rti]');
+    if(c){ const v=c.dataset.rti; sel.includes(v)?sel.splice(sel.indexOf(v),1):sel.push(v); c.classList.toggle('on'); }
+    if(e.target.id==='rt_ok'){ r.items = sel; await save(); bg.remove(); render(); }
+  });
+}
+
+function toast(msg){
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),1700);
+}
+
+/* ---- 操作 ---- */
+document.addEventListener('click', async e=>{
+  const tabBtn = e.target.closest('.tab');
+  if(tabBtn){ tab = tabBtn.dataset.t; render(); return; }
+
+  const rt = e.target.closest('[data-rt]');
+  if(rt){
+    const r = D.routines.find(x=>x.id===rt.dataset.rt), l = log(todayStr());
+    const key = r.time==='朝'?'am':'pm';
+    l[key] = !l[key];
+    const others = D.routines.filter(x=>x!==r && (x.time==='朝'?l.am:l.pm)).flatMap(x=>x.items);
+    l.used = [...new Set(l[key] ? [...l.used, ...r.items] : others)];
+    await save(); render(); return;
   }
 
-  document.addEventListener("DOMContentLoaded", init);
+  const sc = e.target.closest('[data-score]');
+  if(sc){
+    const l = log(todayStr());
+    l.score = Number(sc.dataset.score);
+    render();
+    if(l.temp==null){ const w = await fetchWeather(); l.temp=w.temp; l.humid=w.humid; }
+    await save(); render(); return;
+  }
+
+  const pro = e.target.closest('[data-pro]');
+  if(pro){
+    const l = log(todayStr());
+    const on = l.applyType==='プロアクティブ';
+    l.applyType = on ? null : 'プロアクティブ';
+    l.drug = !on;
+    await save(); render(); return;
+  }
+
+  const sym = e.target.closest('[data-sym]');
+  if(sym){
+    const l = log(todayStr()), v = sym.dataset.sym;
+    l.symptoms.includes(v) ? l.symptoms.splice(l.symptoms.indexOf(v),1) : l.symptoms.push(v);
+    sym.classList.toggle('on');
+    await save(); renderBand(); return;
+  }
+
+  if(e.target.closest('[data-adhoc]')){
+    const l = log(todayStr());
+    if(l.applyType==='リアクティブ'){ l.applyType=null; l.drug=false; }
+    else { l.applyType='リアクティブ'; l.drug=true; }
+    await save(); render(); return;
+  }
+
+  if(e.target.closest('[data-add]')) return itemSheet(null);
+  const ed = e.target.closest('[data-edit]'); if(ed) return itemSheet(ed.dataset.edit);
+  if(e.target.closest('[data-addplan]')) return planSheet(null);
+  const ep = e.target.closest('[data-editplan]'); if(ep) return planSheet(ep.dataset.editplan);
+  const er = e.target.closest('[data-editrt]'); if(er) return routineSheet(er.dataset.editrt);
+  if(e.target.closest('[data-demo]')) return seedDemo();
+});
+
+/* ---- デモデータ ---- */
+async function seedDemo(){
+  const mk = (name,cat,ing,status,start)=>({id:uid(),name,cat,ing,status,start,end:null,opened:start,drug:cat==='外用薬（処方）'});
+  const T = todayStr();
+  const a = mk('セラミド化粧水','化粧水',['セラミド'],'定番',addDays(T,-120));
+  const b = mk('ナイアシンアミド美容液','美容液',['ナイアシンアミド'],'お試し中',addDays(T,-40));
+  const c = mk('レチノールクリーム','美容液',['レチノール'],'お試し中',addDays(T,-18));
+  const d = mk('日焼け止め SPF50','日焼け止め',[],'定番',addDays(T,-200));
+  const m = mk('〇〇軟膏（処方）','外用薬（処方）',[],'定番',addDays(T,-60));
+  D.items = [a,b,c,d,m];
+  D.routines[0].items = [a.id,d.id];
+  D.routines[1].items = [a.id,b.id,c.id];
+  D.plans = [{id:uid(),name:'顔（〇〇軟膏）',days:['月','木'],order:'落ち着いたら週2回、月・木の夜に薄く。4週間後に再診。',start:addDays(T,-56),status:'実施中',clinic:'〇〇皮膚科',next:addDays(T,7)}];
+  D.logs = {};
+  for(let i=90;i>=0;i--){
+    const day = addDays(T,-i);
+    if(Math.random()<0.06) continue;
+    const wd = WD[new Date(day+'T00:00:00').getDay()];
+    const isPro = ['月','木'].includes(wd) && Math.random()<0.82;
+    let s = 3 + (i<40?0.5:0) + (i<18?0.3:0) + (Math.random()-0.5)*1.6;
+    if(i>60 && i<68) s -= 1.4;
+    if(isPro) s += 0.5;
+    const score = Math.max(1,Math.min(5,Math.round(s)));
+    D.logs[day] = {date:day,score,am:Math.random()<0.9,pm:Math.random()<0.95,
+      used:[a.id,d.id,...(i<40?[b.id]:[]),...(i<18?[c.id]:[])],
+      symptoms: score<=2 ? (Math.random()<0.6?['赤み']:['乾燥']) : [],
+      drug:isPro, applyType:isPro?'プロアクティブ':null,
+      temp:null,humid:null};
+  }
+  await save(); toast('デモデータを入れました'); render();
+}
+
+/* ---- 起動 ---- */
+(async()=>{
+  try{
+    D = (await NotionStore.read()) || blank();
+  }catch(e){
+    console.error('Notion読み込みに失敗。ローカルデータで起動します', e);
+    D = (await LocalStore.read()) || blank();
+    toast('Notionと繋がりませんでした。ローカルの記録を表示しています');
+  }
+  if(!D.plans) D.plans = [];
+  if(!D.routines || !D.routines.length){
+    D.routines = [
+      {id:'r_am',name:'朝',time:'朝',items:[],active:true},
+      {id:'r_pm',name:'夜',time:'夜',items:[],active:true}
+    ];
+  }
+  render();
 })();
 </script>
-
-</body>
-</html>
