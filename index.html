@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>肌ログ</title>
+<style>
+  :root {
+    --bg: #f8f3f2;
+    --panel: #ffffff;
+    --border: #ecdfdc;
+    --text: #2e2725;
+    --muted: #7a6f6c;
+    --accent: #c06e7a;
+    --accent-dark: #9c525d;
+    --mild: #6b8f71;
+    --mid: #c99a3f;
+    --severe: #b3546b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 0.9rem; }
+  .layout { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 760px; margin: 0 auto; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .panel h2 { font-size: 1rem; margin: 0 0 12px; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .field label { font-size: 0.82rem; color: var(--muted); }
+  select, input[type=text], input[type=date], textarea, button {
+    font: inherit;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--text);
+  }
+  textarea { resize: vertical; min-height: 44px; }
+  button { cursor: pointer; background: var(--accent); color: #fff; border: none; padding: 8px 16px; }
+  button:hover { background: var(--accent-dark); }
+  button.secondary { background: var(--panel); color: var(--text); border: 1px solid var(--border); padding: 4px 10px; }
+  button.secondary:hover { background: var(--bg); }
+  .hint { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+  .hint.sync-error { color: var(--severe); }
+
+  .check-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .check-item {
+    display: flex; align-items: center; gap: 5px;
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 12px 5px 10px; font-size: 0.85rem; cursor: pointer;
+  }
+  .check-item input { accent-color: var(--accent); margin: 0; }
+  .check-item.checked { background: var(--bg); border-color: var(--accent); }
+
+  .severity-row { display: flex; gap: 6px; }
+  .severity-btn {
+    flex: 1; text-align: center; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 0; cursor: pointer; background: var(--panel); font-weight: 600; color: var(--muted);
+  }
+  .severity-btn.selected { color: #fff; border-color: transparent; }
+
+  .entry-list { display: flex; flex-direction: column; gap: 10px; }
+  .entry {
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px;
+  }
+  .entry-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .entry-head .date { font-weight: 600; font-size: 0.9rem; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 0.76rem; color: #fff; font-weight: 600; }
+  .area-badge { background: var(--accent); }
+  .severity-badge { min-width: 22px; justify-content: center; }
+  .symptom-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .symptom-chip { background: var(--bg); border-radius: 999px; padding: 2px 10px; font-size: 0.76rem; color: var(--text); }
+  .entry-detail { margin-top: 8px; font-size: 0.82rem; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .entry-detail .label { color: var(--text); font-weight: 600; }
+  .entry-actions { margin-top: 8px; text-align: right; }
+  .empty { color: var(--muted); font-size: 0.88rem; padding: 8px 0; }
+</style>
+</head>
+<body>
+
+<h1>肌ログ</h1>
+<p class="subtitle">肌の状態を記録して、変化やきっかけに気づきやすくする</p>
+
+<div class="layout">
+  <div class="panel">
+    <h2>今日の記録</h2>
+    <div class="field">
+      <label for="recordDate">日付</label>
+      <input type="date" id="recordDate">
+    </div>
+    <div class="field">
+      <label for="areaSelect">部位</label>
+      <select id="areaSelect"></select>
+    </div>
+    <div class="field">
+      <label>症状(複数選択可)</label>
+      <div class="check-grid" id="symptomGrid"></div>
+    </div>
+    <div class="field">
+      <label>重症度</label>
+      <div class="severity-row" id="severityRow"></div>
+    </div>
+    <div class="field">
+      <label for="triggerInput">きっかけ・トリガー</label>
+      <input type="text" id="triggerInput" placeholder="例: 辛いものを食べた、新しい洗顔料、乾燥した日 など">
+    </div>
+    <div class="field">
+      <label for="treatmentInput">対処</label>
+      <input type="text" id="treatmentInput" placeholder="例: 保湿クリーム、市販薬 など">
+    </div>
+    <div class="field">
+      <label for="memoInput">メモ</label>
+      <textarea id="memoInput" placeholder="その他気づいたこと"></textarea>
+    </div>
+    <button type="button" id="addRecordBtn">記録する</button>
+    <p class="hint" id="syncStatus"></p>
+  </div>
+
+  <div class="panel">
+    <h2>記録一覧</h2>
+    <div class="entry-list" id="entryList"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Notion bridge shim ----------
+  // window.claude.mcp が存在しない環境(Artifactではなくローカルファイル等として
+  // 開かれた場合)でのみ、Cloudflare Worker(notion-bridge)経由でNotion側の
+  // データを読み書きする互換シムを定義する。window.claude.mcp.callTool(server,
+  // tool, input) と同じ形を再現し、アプリ本体のコードからは区別なく呼べるようにする。
+  if (!(window.claude && window.claude.mcp)) {
+    (function () {
+      var BRIDGE_BASE = "https://notion-bridge.rattuti.workers.dev";
+      var APP_KEY_STORAGE = "notion_bridge_key";
+      var VIEW_TO_DATA_SOURCE = {
+        "view://fc2e5ae9-bda5-4677-b930-6ba44a2fb6cc": "fc2e5ae9-bda5-4677-b930-6ba44a2fb6cc"
+      };
+
+      // notion-query-database-view/notion-create-pagesで取得・作成した各ページIDが
+      // どのデータソース(DB)に属するかを控えておく。notion-update-pageはpage_idしか
+      // 受け取らないため、更新時にこの対応表からdataSourceIdを引く。
+      // Workerが返すIDはハイフン付きだが、アプリ側はextractPageId()でハイフンなしの
+      // 32桁hexに変換した値をnotionIdとして保持するため、キーは常にハイフンを
+      // 除去して正規化してから読み書きする。
+      var pageDataSourceMap = {};
+      function normalizeId(id) {
+        return (id || "").replace(/-/g, "");
+      }
+
+      function getAppKey() {
+        var key = localStorage.getItem(APP_KEY_STORAGE);
+        if (!key) {
+          key = window.prompt("Notion連携用のアプリキーを入力してください");
+          if (key) localStorage.setItem(APP_KEY_STORAGE, key);
+        }
+        return key;
+      }
+
+      function bridgeFetch(path, body) {
+        var key = getAppKey();
+        return fetch(BRIDGE_BASE + path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-App-Key": key || "" },
+          body: JSON.stringify(body)
+        }).then(function (res) {
+          if (res.status === 401) {
+            localStorage.removeItem(APP_KEY_STORAGE);
+            return Promise.reject({ code: "unauthorized", message: "アプリキーが正しくありません" });
+          }
+          if (!res.ok) {
+            return Promise.reject({ code: "http_" + res.status, message: "Notion連携サーバーへの通信に失敗しました" });
+          }
+          return res.json();
+        });
+      }
+
+      // bridgeFetchはWorkerの生レスポンス({results,...}や{pages:[...]}等)を
+      // そのまま返す。window.claude.mcp.callToolの実際の戻り値は{payload: ...}
+      // で包まれた形のため、ここで同じ形に包み直してからアプリ本体に返す。
+      // Workerの生レスポンスはcamelCase(hasMore/nextCursor)だが、本来の
+      // window.claude.mcp.callToolはsnake_case(has_more/next_cursor)を返すため、
+      // アプリ本体が期待する形に変換してから返す。
+      function callTool(server, tool, input) {
+        if (tool === "notion-query-database-view") {
+          var queryDataSourceId = VIEW_TO_DATA_SOURCE[input.view_url];
+          var queryBody = { dataSourceId: queryDataSourceId, page_size: input.page_size };
+          if (input.start_cursor) queryBody.startCursor = input.start_cursor;
+          return bridgeFetch("/query", queryBody).then(function (raw) {
+            var results = raw.results || [];
+            results.forEach(function (row) {
+              if (row && row.id) pageDataSourceMap[normalizeId(row.id)] = queryDataSourceId;
+            });
+            return { payload: { results: results, has_more: raw.hasMore, next_cursor: raw.nextCursor } };
+          });
+        }
+        if (tool === "notion-create-pages") {
+          var createDataSourceId = input.parent && input.parent.data_source_id;
+          var page = input.pages && input.pages[0];
+          return bridgeFetch("/create", {
+            dataSourceId: createDataSourceId,
+            properties: page && page.properties
+          }).then(function (raw) {
+            var created = raw.pages && raw.pages[0];
+            if (created && created.id) pageDataSourceMap[normalizeId(created.id)] = createDataSourceId;
+            return { payload: raw };
+          });
+        }
+        if (tool === "notion-update-page") {
+          return bridgeFetch("/update", {
+            pageId: input.page_id,
+            dataSourceId: pageDataSourceMap[normalizeId(input.page_id)],
+            properties: input.properties
+          }).then(function (raw) {
+            return { payload: raw };
+          });
+        }
+        return Promise.reject({ code: "unsupported_tool", message: "未対応のツールです: " + tool });
+      }
+
+      window.claude = window.claude || {};
+      window.claude.mcp = { callTool: callTool };
+    })();
+  }
+
+  var NOTION_ENABLED = !!(window.claude && window.claude.mcp);
+  var NOTION_SERVER = "Notion";
+  var NOTION_DATA_SOURCE_ID = "fc2e5ae9-bda5-4677-b930-6ba44a2fb6cc";
+  var NOTION_VIEW_URL = "view://" + NOTION_DATA_SOURCE_ID;
+
+  var AREA_OPTIONS = ["顔", "頭皮", "首", "腕", "手", "脚", "体幹", "その他"];
+  var SYMPTOM_OPTIONS = ["赤み", "かゆみ", "乾燥・カサつき", "湿疹・ブツブツ", "皮むけ", "腫れ", "かぶれ", "ニキビ", "その他"];
+  var SEVERITY_COLORS = { 1: "#6b8f71", 2: "#8f9c4f", 3: "#c99a3f", 4: "#c17a4f", 5: "#b3546b" };
+
+  var state = { records: [] };
+  var nextTempId = 1;
+
+  function createTempId() { return "temp-" + (nextTempId++); }
+
+  function todayStr() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  function extractPageId(url) {
+    var m = /([0-9a-f]{32})(?:\?.*)?$/i.exec(url || "");
+    return m ? m[1] : null;
+  }
+
+  function toLabelArray(value) {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string" && value) {
+      try { var parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : [value]; }
+      catch (e) { return value.split(","); }
+    }
+    return [];
+  }
+
+  function filterActiveRows(rows) {
+    return rows.filter(function (row) { return row["削除済み"] !== "__YES__"; });
+  }
+
+  function recordToNotionProps(r) {
+    var props = {
+      "記録名": r.date + " " + r.area,
+      "部位": r.area,
+      "症状": r.symptoms,
+      "重症度": r.severity,
+      "きっかけ・トリガー": r.trigger || "",
+      "対処": r.treatment || "",
+      "メモ": r.memo || "",
+      "削除済み": "__NO__"
+    };
+    if (r.date) props["date:記録日:start"] = r.date;
+    return props;
+  }
+
+  function notionRowToRecord(row) {
+    var pageId = extractPageId(row.url);
+    return {
+      id: pageId,
+      notionId: pageId,
+      date: row["date:記録日:start"] || "",
+      area: row["部位"] || AREA_OPTIONS[0],
+      symptoms: toLabelArray(row["症状"]),
+      severity: typeof row["重症度"] === "number" ? row["重症度"] : 3,
+      trigger: row["きっかけ・トリガー"] || "",
+      treatment: row["対処"] || "",
+      memo: row["メモ"] || ""
+    };
+  }
+
+  function setSyncStatus(text, isError) {
+    var el = document.getElementById("syncStatus");
+    el.textContent = text;
+    el.className = "hint" + (isError ? " sync-error" : "");
+  }
+
+  function queryAllViewRows(viewUrl) {
+    function fetchPage(cursor) {
+      var input = { view_url: viewUrl, page_size: 100 };
+      if (cursor) input.start_cursor = cursor;
+      return window.claude.mcp.callTool(NOTION_SERVER, "notion-query-database-view", input).then(function (res) {
+        var payload = res.payload || {};
+        var rows = payload.results || [];
+        if (payload.has_more && payload.next_cursor) {
+          return fetchPage(payload.next_cursor).then(function (rest) { return rows.concat(rest); });
+        }
+        return rows;
+      });
+    }
+    return fetchPage(null);
+  }
+
+  function notionLoadRecords() {
+    return queryAllViewRows(NOTION_VIEW_URL).then(function (rows) {
+      return filterActiveRows(rows).map(notionRowToRecord);
+    });
+  }
+
+  function notionCreatePage(dataSourceId, properties) {
+    return window.claude.mcp.callTool(NOTION_SERVER, "notion-create-pages", {
+      parent: { type: "data_source_id", data_source_id: dataSourceId },
+      pages: [{ properties: properties }]
+    });
+  }
+  function firstCreatedPageId(res) {
+    var created = res.payload && res.payload.pages && res.payload.pages[0];
+    return (created && created.id) || null;
+  }
+  function notionUpdatePage(pageId, properties) {
+    if (!pageId) return Promise.resolve();
+    return window.claude.mcp.callTool(NOTION_SERVER, "notion-update-page", {
+      page_id: pageId,
+      command: "update_properties",
+      properties: properties
+    });
+  }
+  function notionSoftDelete(pageId) {
+    return notionUpdatePage(pageId, { "削除済み": "__YES__" });
+  }
+
+  function syncCreate(record) {
+    if (!NOTION_ENABLED) return;
+    setSyncStatus("Notionに同期しています…");
+    notionCreatePage(NOTION_DATA_SOURCE_ID, recordToNotionProps(record)).then(function (res) {
+      var id = firstCreatedPageId(res);
+      if (id) { record.id = id; record.notionId = id; }
+      setSyncStatus("Notionと同期中(他の端末からも同じデータが見えます)");
+    }).catch(function (err) {
+      setSyncStatus("記録の同期に失敗しました(" + (err && err.code) + ")", true);
+    });
+  }
+
+  function syncDelete(record) {
+    if (!NOTION_ENABLED) return;
+    notionSoftDelete(record.notionId).catch(function (err) {
+      setSyncStatus("削除の同期に失敗しました(" + (err && err.code) + ")", true);
+    });
+  }
+
+  // ---------- Render ----------
+  function renderAreaOptions() {
+    var sel = document.getElementById("areaSelect");
+    sel.innerHTML = "";
+    AREA_OPTIONS.forEach(function (a) {
+      var opt = document.createElement("option");
+      opt.value = a; opt.textContent = a;
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderSymptomGrid() {
+    var wrap = document.getElementById("symptomGrid");
+    wrap.innerHTML = "";
+    SYMPTOM_OPTIONS.forEach(function (s) {
+      var label = document.createElement("label");
+      label.className = "check-item";
+      var cb = document.createElement("input");
+      cb.type = "checkbox"; cb.value = s;
+      cb.addEventListener("change", function () { label.classList.toggle("checked", cb.checked); });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(s));
+      wrap.appendChild(label);
+    });
+  }
+
+  var selectedSeverity = 3;
+  function renderSeverityRow() {
+    var wrap = document.getElementById("severityRow");
+    wrap.innerHTML = "";
+    for (var i = 1; i <= 5; i++) {
+      (function (n) {
+        var btn = document.createElement("div");
+        btn.className = "severity-btn" + (n === selectedSeverity ? " selected" : "");
+        btn.textContent = n;
+        if (n === selectedSeverity) btn.style.background = SEVERITY_COLORS[n];
+        btn.addEventListener("click", function () {
+          selectedSeverity = n;
+          renderSeverityRow();
+        });
+        wrap.appendChild(btn);
+      })(i);
+    }
+  }
+
+  function getCheckedSymptoms() {
+    var boxes = document.querySelectorAll("#symptomGrid input[type=checkbox]:checked");
+    return Array.prototype.map.call(boxes, function (b) { return b.value; });
+  }
+
+  function renderEntryList() {
+    var wrap = document.getElementById("entryList");
+    wrap.innerHTML = "";
+    var sorted = state.records.slice().sort(function (a, b) {
+      return (b.date || "").localeCompare(a.date || "");
+    });
+    if (!sorted.length) {
+      var empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "まだ記録がありません。";
+      wrap.appendChild(empty);
+      return;
+    }
+    sorted.forEach(function (r) {
+      var entry = document.createElement("div");
+      entry.className = "entry";
+
+      var head = document.createElement("div");
+      head.className = "entry-head";
+      var left = document.createElement("div");
+      var dateEl = document.createElement("span");
+      dateEl.className = "date"; dateEl.textContent = r.date || "(日付未設定)";
+      left.appendChild(dateEl);
+      var areaBadge = document.createElement("span");
+      areaBadge.className = "badge area-badge"; areaBadge.textContent = r.area;
+      areaBadge.style.marginLeft = "8px";
+      left.appendChild(areaBadge);
+      head.appendChild(left);
+
+      var sevBadge = document.createElement("span");
+      sevBadge.className = "badge severity-badge";
+      sevBadge.style.background = SEVERITY_COLORS[r.severity] || "#999";
+      sevBadge.textContent = r.severity;
+      head.appendChild(sevBadge);
+      entry.appendChild(head);
+
+      if (r.symptoms && r.symptoms.length) {
+        var chips = document.createElement("div");
+        chips.className = "symptom-chips";
+        r.symptoms.forEach(function (s) {
+          var chip = document.createElement("span");
+          chip.className = "symptom-chip"; chip.textContent = s;
+          chips.appendChild(chip);
+        });
+        entry.appendChild(chips);
+      }
+
+      var detail = document.createElement("div");
+      detail.className = "entry-detail";
+      [["きっかけ・トリガー", r.trigger], ["対処", r.treatment], ["メモ", r.memo]].forEach(function (pair) {
+        if (!pair[1]) return;
+        var line = document.createElement("div");
+        var labelSpan = document.createElement("span");
+        labelSpan.className = "label"; labelSpan.textContent = pair[0] + ": ";
+        line.appendChild(labelSpan);
+        line.appendChild(document.createTextNode(pair[1]));
+        detail.appendChild(line);
+      });
+      if (detail.childNodes.length) entry.appendChild(detail);
+
+      var actions = document.createElement("div");
+      actions.className = "entry-actions";
+      var rm = document.createElement("button");
+      rm.type = "button"; rm.className = "secondary"; rm.textContent = "削除";
+      rm.addEventListener("click", function () {
+        state.records = state.records.filter(function (x) { return x.id !== r.id; });
+        renderEntryList();
+        syncDelete(r);
+      });
+      actions.appendChild(rm);
+      entry.appendChild(actions);
+
+      wrap.appendChild(entry);
+    });
+  }
+
+  function renderAll() {
+    renderEntryList();
+  }
+
+  function init() {
+    renderAreaOptions();
+    renderSymptomGrid();
+    renderSeverityRow();
+    document.getElementById("recordDate").value = todayStr();
+
+    document.getElementById("addRecordBtn").addEventListener("click", function () {
+      var date = document.getElementById("recordDate").value || todayStr();
+      var area = document.getElementById("areaSelect").value || AREA_OPTIONS[0];
+      var symptoms = getCheckedSymptoms();
+      var trigger = document.getElementById("triggerInput").value.trim();
+      var treatment = document.getElementById("treatmentInput").value.trim();
+      var memo = document.getElementById("memoInput").value.trim();
+
+      var r = {
+        id: createTempId(), notionId: null,
+        date: date, area: area, symptoms: symptoms, severity: selectedSeverity,
+        trigger: trigger, treatment: treatment, memo: memo
+      };
+      state.records.push(r);
+      renderAll();
+      syncCreate(r);
+
+      document.getElementById("triggerInput").value = "";
+      document.getElementById("treatmentInput").value = "";
+      document.getElementById("memoInput").value = "";
+      document.querySelectorAll("#symptomGrid input[type=checkbox]").forEach(function (cb) {
+        cb.checked = false;
+        cb.parentElement.classList.remove("checked");
+      });
+      selectedSeverity = 3;
+      renderSeverityRow();
+    });
+
+    if (NOTION_ENABLED) {
+      setSyncStatus("Notionから読み込んでいます…");
+      notionLoadRecords().then(function (records) {
+        state.records = records;
+        renderAll();
+        setSyncStatus("Notionと同期中(他の端末からも同じデータが見えます)");
+      }).catch(function (err) {
+        setSyncStatus("Notionからの読み込みに失敗しました(" + (err && err.code) + ")。ページを再読み込みしてください。", true);
+        renderAll();
+      });
+    } else {
+      setSyncStatus("ローカルモードです(このページを閉じるとデータは消えます)");
+      renderAll();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+
+</body>
+</html>
