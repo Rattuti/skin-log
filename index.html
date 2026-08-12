@@ -188,6 +188,9 @@ details.extra[open] summary::before{content:"−"}
 
 .flare-item{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)}
 .flare-item:last-child{border-bottom:none}
+.concern-item{padding:12px 0;border-bottom:1px solid var(--line)}
+.concern-item:last-child{border-bottom:none}
+.concern-head{display:flex;align-items:center;gap:8px}
 .flare-d{font-family:var(--mono);font-size:11.5px;color:var(--warn);width:52px;flex:none}
 
 /* ---- 棚 ---- */
@@ -362,6 +365,9 @@ async function bridgeCreate(dataSourceId, properties){
 }
 async function bridgeUpdate(dataSourceId, pageId, properties){
   return bridgeFetch('/update', { dataSourceId, pageId, properties });
+}
+async function bridgeArchive(dataSourceId, pageId){
+  return bridgeFetch('/update', { dataSourceId, pageId, archived: true });
 }
 
 /* ---- Notion(フラット行) <-> アプリ内部形式の変換 ---- */
@@ -712,6 +718,7 @@ function renderConcernHistory(){
       <div class="concern-head">
         <span class="num" style="font-size:11px;color:var(--muted)">${esc(c.datetime)}</span>
         <span class="tag" style="font-size:10px;padding:2px 9px">${esc(c.status)}</span>
+        <button class="btn-ghost" data-delconcern="${esc(c.id||'')}" style="margin-left:auto;color:var(--warn)">削除</button>
       </div>
       ${c.tags && c.tags.length ? `<div class="muted" style="margin-top:4px">${esc(c.tags.join('・'))}</div>` : ''}
       ${c.comment ? `<div style="margin-top:6px;font-size:13.5px">${esc(c.comment)}</div>` : ''}
@@ -1146,6 +1153,21 @@ document.addEventListener('click', async e=>{
         await save(); bg.remove(); render();
       }
     });
+    return;
+  }
+  const delC = e.target.closest('[data-delconcern]');
+  if(delC){
+    const id = delC.dataset.delconcern;
+    const entry = (D.concerns||[]).find(c => c.id === id);
+    if(!entry) return;
+    if(!confirm('この記録を削除しますか？')) return;
+    D.concerns = (D.concerns||[]).filter(c => c.id !== id);
+    render();
+    try{
+      if(entry.id && entry.id.length > 20) await bridgeArchive(DS.concerns, entry.id);
+    }catch(err){
+      console.error('Notion側の削除に失敗', err);
+    }
     return;
   }
 
