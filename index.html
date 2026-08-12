@@ -519,6 +519,18 @@ function matchConcernTopics(comment, tags){
   });
   return hit;
 }
+function buildConcernSearchLinks(comment, tags){
+  const terms = [];
+  const c = (comment || '').trim();
+  if(c) terms.push(c.slice(0, 40));
+  (tags || []).forEach(t => { if(!terms.includes(t)) terms.push(t); });
+  if(!terms.length) return [];
+  const q = '肌 ' + terms.join(' ');
+  return [
+    { label: 'Google検索', url: 'https://www.google.com/search?q=' + encodeURIComponent(q) },
+    { label: 'Yahoo!知恵袋で調べる', url: 'https://search.yahoo.co.jp/search?p=' + encodeURIComponent(q + ' site:chiebukuro.yahoo.co.jp') },
+  ];
+}
 
 let D = null;
 let tab = 'today';
@@ -713,7 +725,9 @@ function renderToday(){
 function renderConcernHistory(){
   const list = (D.concerns || []);
   if(!list.length) return `<div class="muted">まだ記録がありません。上の「気になることを残す」からコメントを書けます。</div>`;
-  return `<div class="card">${list.map(c=>`
+  return `<div class="card">${list.map(c=>{
+    const links = buildConcernSearchLinks(c.comment, c.tags);
+    return `
     <div class="concern-item" data-concern-id="${esc(c.id||'')}">
       <div class="concern-head">
         <span class="num" style="font-size:11px;color:var(--muted)">${esc(c.datetime)}</span>
@@ -723,10 +737,12 @@ function renderConcernHistory(){
       ${c.tags && c.tags.length ? `<div class="muted" style="margin-top:4px">${esc(c.tags.join('・'))}</div>` : ''}
       ${c.comment ? `<div style="margin-top:6px;font-size:13.5px">${esc(c.comment)}</div>` : ''}
       ${c.topics && c.topics.length ? `<div class="muted" style="margin-top:6px">関連しそうな参考情報：${esc(c.topics.join('、'))}（参考タブで詳細を見られます）</div>` : ''}
+      ${links.length ? `<div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">${links.map(l=>`<a class="btn-ghost" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">${esc(l.label)} ↗</a>`).join('')}</div>` : ''}
       ${c.followup ? `<div class="muted" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px">対処メモ：${esc(c.followup)}</div>` : ''}
       <button class="btn-ghost" data-addfollowup="${esc(c.id||'')}" style="margin-top:4px">${c.followup ? '対処メモを編集' : '対処メモを追記'}</button>
     </div>
-  `).join('')}</div>`;
+  `;
+  }).join('')}</div>`;
 }
 function renderVerify(){
   const ls = sortedLogs();
