@@ -710,7 +710,7 @@ function renderToday(){
         <button class="btn" data-adhoc="1">${l.applyType==='リアクティブ'?'✓ 臨時で薬を塗った':'臨時で薬を塗った'}</button>
       </div>
       <div class="field" style="margin-top:14px">
-        <label>コメント（任意）</label>
+        <label for="concernComment">コメント（任意）</label>
         <textarea id="concernComment" placeholder="気になることを自由に書いてください（例：耳たぶの毛穴がぷっくりしている）"></textarea>
       </div>
       <button class="btn btn-primary" data-savecomment="1" style="margin-top:8px">この内容を記録する</button>
@@ -985,12 +985,12 @@ function itemSheet(id){
   const it = D.items.find(i=>i.id===id) || {id:null,name:'',cat:'化粧水',ing:[],status:'お試し中',start:todayStr(),end:null,drug:false,opened:null};
   const bg = sheet(`
     <h3>${id?'アイテムを編集':'アイテムを追加'}</h3>
-    <div class="field"><label>商品名</label><input type="text" id="f_name" value="${esc(it.name)}" placeholder="例）〇〇 モイスチャーローション"></div>
-    <div class="field"><label>カテゴリ</label><select id="f_cat">${CATS.map(c=>`<option ${c===it.cat?'selected':''}>${c}</option>`).join('')}</select></div>
+    <div class="field"><label for="f_name">商品名</label><input type="text" id="f_name" value="${esc(it.name)}" placeholder="例）〇〇 モイスチャーローション"></div>
+    <div class="field"><label for="f_cat">カテゴリ</label><select id="f_cat">${CATS.map(c=>`<option ${c===it.cat?'selected':''}>${c}</option>`).join('')}</select></div>
     <div class="field"><label>主要成分</label>${multi('ing', INGREDIENTS, it.ing)}</div>
-    <div class="field"><label>ステータス</label><select id="f_status">${['お試し中','定番','休止中','終了'].map(s=>`<option ${s===it.status?'selected':''}>${s}</option>`).join('')}</select></div>
-    <div class="field"><label>投入日（効果を見る起点になります）</label><input type="date" id="f_start" value="${it.start||''}"></div>
-    <div class="field"><label>開封日</label><input type="date" id="f_opened" value="${it.opened||''}"></div>
+    <div class="field"><label for="f_status">ステータス</label><select id="f_status">${['お試し中','定番','休止中','終了'].map(s=>`<option ${s===it.status?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="field"><label for="f_start">投入日（効果を見る起点になります）</label><input type="date" id="f_start" value="${it.start||''}"></div>
+    <div class="field"><label for="f_opened">開封日</label><input type="date" id="f_opened" value="${it.opened||''}"></div>
     <div class="sheet-act">
       ${id?`<button class="btn" id="f_del">削除</button>`:''}
       <button class="btn btn-primary" id="f_ok">保存</button>
@@ -1023,14 +1023,14 @@ function planSheet(id){
   const p = D.plans.find(x=>x.id===id) || {id:null,name:'',days:[],order:'',start:todayStr(),status:'実施中',clinic:'',next:null};
   const bg = sheet(`
     <h3>${id?'計画を編集':'プロアクティブ計画'}</h3>
-    <div class="field"><label>部位と薬の名前</label><input type="text" id="p_name" value="${esc(p.name)}" placeholder="例）顔（〇〇軟膏）"></div>
-    <div class="field"><label>医師の指示（そのまま書き写してください）</label>
+    <div class="field"><label for="p_name">部位と薬の名前</label><input type="text" id="p_name" value="${esc(p.name)}" placeholder="例）顔（〇〇軟膏）"></div>
+    <div class="field"><label for="p_order">医師の指示（そのまま書き写してください）</label>
       <textarea id="p_order" placeholder="例）症状が落ち着いたら週2回、月曜と木曜の夜に薄く。次回2週間後に確認。">${esc(p.order)}</textarea></div>
     <div class="field"><label>塗布する曜日（指示に合わせて設定）</label>${multi('days', WD, p.days)}</div>
-    <div class="field"><label>開始日</label><input type="date" id="p_start" value="${p.start||''}"></div>
-    <div class="field"><label>処方元</label><input type="text" id="p_clinic" value="${esc(p.clinic)}" placeholder="例）〇〇皮膚科"></div>
-    <div class="field"><label>次回受診日</label><input type="date" id="p_next" value="${p.next||''}"></div>
-    <div class="field"><label>状態</label><select id="p_status">${['実施中','休止','終了'].map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="field"><label for="p_start">開始日</label><input type="date" id="p_start" value="${p.start||''}"></div>
+    <div class="field"><label for="p_clinic">処方元</label><input type="text" id="p_clinic" value="${esc(p.clinic)}" placeholder="例）〇〇皮膚科"></div>
+    <div class="field"><label for="p_next">次回受診日</label><input type="date" id="p_next" value="${p.next||''}"></div>
+    <div class="field"><label for="p_status">状態</label><select id="p_status">${['実施中','休止','終了'].map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select></div>
     <div class="notice" style="margin-top:0">頻度や期間はアプリでは決めません。医師の指示をそのまま記録し、その遂行を支えるための画面です。</div>
     <div class="sheet-act">
       ${id?`<button class="btn" id="p_del">削除</button>`:''}
@@ -1151,11 +1151,11 @@ document.addEventListener('click', async e=>{
       <h3>対処メモを追記</h3>
       <div class="muted" style="margin-bottom:10px">${esc(entry.datetime)}の記録${entry.comment?'：'+esc(entry.comment):''}</div>
       <div class="field">
-        <label>試したこと・経過</label>
+        <label for="followupText">試したこと・経過</label>
         <textarea id="followupText" placeholder="例：保湿を増やしたら数日で落ち着いた">${esc(entry.followup||'')}</textarea>
       </div>
       <div class="field">
-        <label>状態</label>
+        <label for="followupStatus">状態</label>
         <select id="followupStatus">
           ${['気になる中','経過観察','落ち着いた'].map(s=>`<option ${s===entry.status?'selected':''}>${s}</option>`).join('')}
         </select>
