@@ -75,7 +75,7 @@ body{
 }
 .band-legend{
   display:flex;justify-content:space-between;margin-top:14px;
-  font-family:var(--mono);font-size:9px;color:#6C7B75;letter-spacing:.06em;
+  font-family:var(--mono);font-size:9px;color:#7E8D87;letter-spacing:.06em;
 }
 
 /* ---- 共通 ---- */
@@ -652,6 +652,12 @@ function renderBand(){
 }
 
 function renderToday(){
+  // ルーティン/スコア等の操作で毎回フル再描画されるため、
+  // 「気になることを残す」の開閉状態と未保存のコメント下書きを保持する
+  const prevDetails = document.querySelector('#view details.extra');
+  const detailsWasOpen = !!(prevDetails && prevDetails.open);
+  const prevComment = document.getElementById('concernComment');
+  const draftComment = prevComment ? prevComment.value : '';
   const d = todayStr(), l = log(d), dt = new Date(d+'T00:00:00');
   const itemName = id => (D.items.find(i=>i.id===id)||{}).name || '';
   const rt = D.routines.map(r=>{
@@ -701,7 +707,7 @@ function renderToday(){
     <div class="scale">${scale}</div>
     <div class="scale-ends"><span>調子が悪い</span><span>調子が良い</span></div>
 
-    <details class="extra">
+    <details class="extra"${detailsWasOpen ? ' open' : ''}>
       <summary>気になることを残す（任意）</summary>
       <div class="tags">
         ${SYMPTOMS.map(s=>`<button class="tag ${l.symptoms.includes(s)?'on':''}" data-sym="${s}">${s}</button>`).join('')}
@@ -721,6 +727,10 @@ function renderToday(){
 
     <div class="notice">記録は3タップで終わります。使ったアイテムはルーティンから自動で入るため、選ぶ必要はありません。コメントは任意です。</div>
   `;
+  if(draftComment){
+    const ta = document.getElementById('concernComment');
+    if(ta) ta.value = draftComment;
+  }
 }
 function renderConcernHistory(){
   const list = (D.concerns || []);
@@ -794,7 +804,7 @@ function renderVerify(){
         <div class="metric"><span class="metric-v">${pro.done}<span style="font-size:16px;color:var(--muted)">/${pro.sched}</span></span>
           <span class="metric-u">直近8週の予定日に対して</span></div>
         <div class="heat">${cols.map(c=>`<div class="heat-col">${
-          c.map(x=>`<div class="hc ${x.future?'':(x.done?'done':(x.sched?'miss':(x.sched?'sched':'')))}" title="${x.d}"></div>`).join('')
+          c.map(x=>`<div class="hc ${x.future?'':(x.done?'done':(x.sched?'miss':''))}" title="${x.d}"></div>`).join('')
         }</div>`).join('')}</div>
         <div class="legend">
           <span><i style="background:var(--drug)"></i>実施</span>
