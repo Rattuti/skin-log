@@ -12,7 +12,7 @@
   --surface-2:#EDF0EC;
   --ink:#161D1A;
   --ink-2:#3E4A45;
-  --muted:#77837D;
+  --muted:#5D6661;
   --line:#CFD6D0;
   --accent:#26695A;
   --accent-soft:#DCE8E3;
@@ -534,6 +534,11 @@ function buildConcernSearchLinks(comment, tags){
 
 let D = null;
 let tab = 'today';
+// タブを離れる瞬間のDOMから拾っておく、今日タブの未保存下書き
+// （タブ切り替えでview全体が書き換わると、renderToday内の
+// 直前DOM参照では拾えなくなるため）
+let todayDraftComment = '';
+let todayDetailsOpen = false;
 const todayStr = () => new Date().toISOString().slice(0,10);
 const dstr = d => d.toISOString().slice(0,10);
 const addDays = (s,n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return dstr(d); };
@@ -653,11 +658,13 @@ function renderBand(){
 
 function renderToday(){
   // ルーティン/スコア等の操作で毎回フル再描画されるため、
-  // 「気になることを残す」の開閉状態と未保存のコメント下書きを保持する
+  // 「気になることを残す」の開閉状態と未保存のコメント下書きを保持する。
+  // タブを一度離れてから今日タブに戻った場合はDOMがすでに失われているため、
+  // todayDraftComment/todayDetailsOpen（タブ切替時に退避した値）にフォールバックする。
   const prevDetails = document.querySelector('#view details.extra');
-  const detailsWasOpen = !!(prevDetails && prevDetails.open);
+  const detailsWasOpen = prevDetails ? prevDetails.open : todayDetailsOpen;
   const prevComment = document.getElementById('concernComment');
-  const draftComment = prevComment ? prevComment.value : '';
+  const draftComment = prevComment ? prevComment.value : todayDraftComment;
   const d = todayStr(), l = log(d), dt = new Date(d+'T00:00:00');
   const itemName = id => (D.items.find(i=>i.id===id)||{}).name || '';
   const rt = D.routines.map(r=>{
@@ -1093,7 +1100,17 @@ function toast(msg){
 /* ---- 操作 ---- */
 document.addEventListener('click', async e=>{
   const tabBtn = e.target.closest('.tab');
-  if(tabBtn){ tab = tabBtn.dataset.t; render(); return; }
+  if(tabBtn){
+    // 今日タブを離れる前に、未保存のコメント下書きと開閉状態を退避する
+    // （他タブに切り替えて戻ると#viewごと書き換わり消えてしまうため）
+    if(tab==='today'){
+      const ta = document.getElementById('concernComment');
+      if(ta) todayDraftComment = ta.value;
+      const det = document.querySelector('#view details.extra');
+      if(det) todayDetailsOpen = det.open;
+    }
+    tab = tabBtn.dataset.t; render(); return;
+  }
 
   const rt = e.target.closest('[data-rt]');
   if(rt){
@@ -1148,6 +1165,10 @@ document.addEventListener('click', async e=>{
     const topics = matchConcernTopics(comment, l.symptoms);
     const entry = { id: uid(), datetime, tags: [...l.symptoms], comment, topics, followup: '', status: '気になる中' };
     D.concerns = [entry, ...(D.concerns||[])];
+    // 下書き保持の仕組みが、保存済みの文面をそのまま次の下書きとして
+    // 復元してしまわないよう、再描画前にクリアしておく
+    if(textarea) textarea.value = '';
+    todayDraftComment = '';
     await save(); render();
     toast('記録しました');
     return;
