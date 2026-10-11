@@ -369,6 +369,12 @@ async function bridgeUpdate(dataSourceId, pageId, properties){
 async function bridgeArchive(dataSourceId, pageId){
   return bridgeFetch('/update', { dataSourceId, pageId, archived: true });
 }
+async function archiveInNotion(dataSourceId, id){
+  const pageId = resolveId(id);
+  if(!isNotionId(pageId)) return;
+  try{ await bridgeArchive(dataSourceId, pageId); }
+  catch(err){ console.error('Notion側の削除に失敗', err); toast('Notion側の削除に失敗しました。通信状況を確認してください'); }
+}
 
 /* ---- Notion(フラット行) <-> アプリ内部形式の変換 ---- */
 function itemFromNotion(row){
@@ -457,23 +463,45 @@ const NotionStore = {
     return { items, routines, plans, logs, concerns };
   },
 
-  async write(d){
+  // 保存を直列化する。連打などで同時に走ると、同じ未作成レコードが二重にcreateされるため
+  write(d){
+    const run = writeChain.then(() => this._write(d));
+    writeChain = run.catch(() => {});
+    return run;
+  },
+
+  async _write(d){
     try{
-      await Promise.all(d.items.map(it =>
-        it.id && it.id.length > 20 ? bridgeUpdate(DS.items, it.id, itemToNotion(it)) : bridgeCreate(DS.items, itemToNotion(it))
-      ));
-      await Promise.all(d.routines.filter(r=>!r.id.startsWith('r_')).map(r =>
-        bridgeUpdate(DS.routines, r.id, routineToNotion(r))
-      ));
-      await Promise.all(Object.values(d.logs).map(l =>
-        l._pageId ? bridgeUpdate(DS.logs, l._pageId, logToNotion(l)) : bridgeCreate(DS.logs, logToNotion(l))
-      ));
-      await Promise.all(d.plans.map(pl =>
-        pl.id && pl.id.length > 20 ? bridgeUpdate(DS.plans, pl.id, planToNotion(pl)) : bridgeCreate(DS.plans, planToNotion(pl))
-      ));
-      await Promise.all((d.concerns || []).map(c =>
-        c.id && c.id.length > 20 ? bridgeUpdate(DS.concerns, c.id, concernToNotion(c)) : bridgeCreate(DS.concerns, concernToNotion(c))
-      ));
+      // 新規作成したら返ってきたNotionのページIDを書き戻す。書き戻さないと次の保存で再びcreateされ重複する
+      await Promise.all(d.items.map(async it => {
+        it.id = resolveId(it.id);
+        if(isNotionId(it.id)) return bridgeUpdate(DS.items, it.id, itemToNotion(it));
+        it.id = await createAndRemember(DS.items, itemToNotion(it), it.id);
+      }));
+      // 仮IDで参照していたルーティン・ログの使用アイテムを、作成後のIDに付け替える
+      const remap = ids => (ids || []).map(resolveId);
+      d.routines.forEach(r => { r.items = remap(r.items); });
+      Object.values(d.logs).forEach(l => { l.used = remap(l.used); });
+      await Promise.all(d.routines.map(async r => {
+        r.id = resolveId(r.id);
+        if(isNotionId(r.id)) return bridgeUpdate(DS.routines, r.id, routineToNotion(r));
+        r.id = await createAndRemember(DS.routines, routineToNotion(r), r.id);
+      }));
+      await Promise.all(Object.values(d.logs).map(async l => {
+        if(l._pageId) return bridgeUpdate(DS.logs, l._pageId, logToNotion(l));
+        const res = await bridgeCreate(DS.logs, logToNotion(l));
+        l._pageId = res.id;
+      }));
+      await Promise.all(d.plans.map(async pl => {
+        pl.id = resolveId(pl.id);
+        if(isNotionId(pl.id)) return bridgeUpdate(DS.plans, pl.id, planToNotion(pl));
+        pl.id = await createAndRemember(DS.plans, planToNotion(pl), pl.id);
+      }));
+      await Promise.all((d.concerns || []).map(async c => {
+        c.id = resolveId(c.id);
+        if(isNotionId(c.id)) return bridgeUpdate(DS.concerns, c.id, concernToNotion(c));
+        c.id = await createAndRemember(DS.concerns, concernToNotion(c), c.id);
+      }));
       await LocalStore.write(d);
       return true;
     }catch(e){
@@ -483,6 +511,17 @@ const NotionStore = {
     }
   }
 };
+let writeChain = Promise.resolve();
+// Notionのページは36文字のUUID、アプリ内の仮IDは uid() の7文字
+function isNotionId(id){ return !!id && id.length > 20; }
+// 作成済みの仮ID→NotionページID。保存中に開いた編集シートが古い仮IDのまま保存しても、二重作成しないため
+const createdIds = {};
+function resolveId(id){ return createdIds[id] || id; }
+async function createAndRemember(dataSourceId, properties, tempId){
+  const res = await bridgeCreate(dataSourceId, properties);
+  if(tempId) createdIds[tempId] = res.id;
+  return res.id;
+}
 
 const Store = NotionStore;
 
@@ -1017,7 +1056,11 @@ function itemSheet(id){
   bg.addEventListener('click', async e=>{
     const m = e.target.closest('[data-multi]');
     if(m){ const v=m.dataset.v; ing.includes(v)?ing.splice(ing.indexOf(v),1):ing.push(v); m.classList.toggle('on'); }
-    if(e.target.id==='f_del'){ D.items = D.items.filter(i=>i.id!==id); await save(); bg.remove(); render(); }
+    if(e.target.id==='f_del'){
+      D.items = D.items.filter(i=>i.id!==id); await save(); bg.remove(); render();
+      // ローカルから消すだけだと次回のNotion読み込みで復活するので、Notion側もアーカイブする
+      await archiveInNotion(DS.items, id);
+    }
     if(e.target.id==='f_ok'){
       const name = bg.querySelector('#f_name').value.trim();
       if(!name){ toast('商品名を入れてください'); return; }
@@ -1058,7 +1101,10 @@ function planSheet(id){
   bg.addEventListener('click', async e=>{
     const m = e.target.closest('[data-multi]');
     if(m){ const v=m.dataset.v; days.includes(v)?days.splice(days.indexOf(v),1):days.push(v); m.classList.toggle('on'); }
-    if(e.target.id==='p_del'){ D.plans = D.plans.filter(x=>x.id!==id); await save(); bg.remove(); render(); }
+    if(e.target.id==='p_del'){
+      D.plans = D.plans.filter(x=>x.id!==id); await save(); bg.remove(); render();
+      await archiveInNotion(DS.plans, id);
+    }
     if(e.target.id==='p_ok'){
       const name = bg.querySelector('#p_name').value.trim();
       if(!name){ toast('名前を入れてください'); return; }
@@ -1209,12 +1255,8 @@ document.addEventListener('click', async e=>{
     if(!entry) return;
     if(!confirm('この記録を削除しますか？')) return;
     D.concerns = (D.concerns||[]).filter(c => c.id !== id);
-    render();
-    try{
-      if(entry.id && entry.id.length > 20) await bridgeArchive(DS.concerns, entry.id);
-    }catch(err){
-      console.error('Notion側の削除に失敗', err);
-    }
+    await save(); render();
+    await archiveInNotion(DS.concerns, entry.id);
     return;
   }
 
