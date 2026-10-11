@@ -1057,6 +1057,7 @@ function itemSheet(id){
     const m = e.target.closest('[data-multi]');
     if(m){ const v=m.dataset.v; ing.includes(v)?ing.splice(ing.indexOf(v),1):ing.push(v); m.classList.toggle('on'); }
     if(e.target.id==='f_del'){
+      if(!confirm('このアイテムを削除しますか？')) return;
       D.items = D.items.filter(i=>i.id!==id); await save(); bg.remove(); render();
       // ローカルから消すだけだと次回のNotion読み込みで復活するので、Notion側もアーカイブする
       await archiveInNotion(DS.items, id);
@@ -1102,6 +1103,7 @@ function planSheet(id){
     const m = e.target.closest('[data-multi]');
     if(m){ const v=m.dataset.v; days.includes(v)?days.splice(days.indexOf(v),1):days.push(v); m.classList.toggle('on'); }
     if(e.target.id==='p_del'){
+      if(!confirm('この計画を削除しますか？')) return;
       D.plans = D.plans.filter(x=>x.id!==id); await save(); bg.remove(); render();
       await archiveInNotion(DS.plans, id);
     }
