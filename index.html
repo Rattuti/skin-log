@@ -709,7 +709,7 @@ function renderToday(){
   const rt = D.routines.map(r=>{
     const on = r.time==='朝' ? l.am : l.pm;
     const names = r.items.map(itemName).filter(Boolean);
-    return `<button class="rt ${on?'on':''}" data-rt="${r.id}">
+    return `<button class="rt ${on?'on':''}" data-rt="${r.id}" aria-pressed="${on}">
       <span class="rt-mark">${r.time==='朝'?'☀':'☾'}</span>
       <span class="rt-name">${esc(r.name)}</span>
       <span class="rt-items">${names.length?esc(names.join(' / ')):'アイテム未設定'}</span>
@@ -726,12 +726,12 @@ function renderToday(){
         <div class="pro-title">${done?'塗布を記録しました':'今日は塗布日です'}</div>
         <div class="pro-sub">${esc(plan.name)}</div>
       </div>
-      <button class="btn ${done?'':'btn-primary'}" data-pro="${plan.id}">${done?'取り消す':'塗った'}</button>
+      <button class="btn ${done?'':'btn-primary'}" data-pro="${plan.id}" aria-pressed="${done}">${done?'取り消す':'塗った'}</button>
     </div>`;
   }
 
   const scale = [1,2,3,4,5].map(n=>`
-    <button class="sc ${l.score===n?'on':''}" data-score="${n}" aria-label="肌スコア ${n}">
+    <button class="sc ${l.score===n?'on':''}" data-score="${n}" aria-label="肌スコア ${n}" aria-pressed="${l.score===n}">
       <span class="dot" style="background:${SCORE_COLOR[n]}"></span>
       <span class="lb">${n}</span>
     </button>`).join('');
@@ -756,10 +756,10 @@ function renderToday(){
     <details class="extra"${detailsWasOpen ? ' open' : ''}>
       <summary>気になることを残す（任意）</summary>
       <div class="tags">
-        ${SYMPTOMS.map(s=>`<button class="tag ${l.symptoms.includes(s)?'on':''}" data-sym="${s}">${s}</button>`).join('')}
+        ${SYMPTOMS.map(s=>`<button class="tag ${l.symptoms.includes(s)?'on':''}" data-sym="${s}" aria-pressed="${l.symptoms.includes(s)}">${s}</button>`).join('')}
       </div>
       <div style="margin-top:12px">
-        <button class="btn" data-adhoc="1">${l.applyType==='リアクティブ'?'✓ 臨時で薬を塗った':'臨時で薬を塗った'}</button>
+        <button class="btn" data-adhoc="1" aria-pressed="${l.applyType==='リアクティブ'}">${l.applyType==='リアクティブ'?'✓ 臨時で薬を塗った':'臨時で薬を塗った'}</button>
       </div>
       <div class="field" style="margin-top:14px">
         <label for="concernComment">コメント（任意）</label>
@@ -904,7 +904,7 @@ function renderShelf(){
       <div class="item">
         <div class="item-b">
           <div class="item-n">${esc(i.name)}</div>
-          <div class="item-m">${esc(i.cat)}${i.ing.length?'　'+esc(i.ing.join('・')):''}${i.start?`　投入 ${i.start.slice(5).replace('-','/')}`:''}</div>
+          <div class="item-m">${esc(i.cat)}${i.ing.length?'　'+esc(i.ing.join('・')):''}${i.start?`　投入 ${i.start.slice(5).replace('-','/')}`:''}${i.opened?`　開封 ${i.opened.slice(5).replace('-','/')}`:''}</div>
         </div>
         <span class="pill ${cls}">${g}</span>
         <button class="btn-ghost" data-edit="${i.id}">編集</button>
@@ -1034,7 +1034,7 @@ function sheet(html){
   return bg;
 }
 function multi(name, opts, sel){
-  return `<div class="chips">${opts.map(o=>`<button class="chip ${sel.includes(o)?'on':''}" data-multi="${name}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+  return `<div class="chips">${opts.map(o=>`<button class="chip ${sel.includes(o)?'on':''}" data-multi="${name}" data-v="${esc(o)}" aria-pressed="${sel.includes(o)}">${esc(o)}</button>`).join('')}</div>`;
 }
 
 function itemSheet(id){
@@ -1055,7 +1055,7 @@ function itemSheet(id){
   let ing = [...it.ing];
   bg.addEventListener('click', async e=>{
     const m = e.target.closest('[data-multi]');
-    if(m){ const v=m.dataset.v; ing.includes(v)?ing.splice(ing.indexOf(v),1):ing.push(v); m.classList.toggle('on'); }
+    if(m){ const v=m.dataset.v; ing.includes(v)?ing.splice(ing.indexOf(v),1):ing.push(v); m.setAttribute('aria-pressed', String(m.classList.toggle('on'))); }
     if(e.target.id==='f_del'){
       if(!confirm('このアイテムを削除しますか？')) return;
       D.items = D.items.filter(i=>i.id!==id); await save(); bg.remove(); render();
@@ -1101,7 +1101,7 @@ function planSheet(id){
   let days = [...p.days];
   bg.addEventListener('click', async e=>{
     const m = e.target.closest('[data-multi]');
-    if(m){ const v=m.dataset.v; days.includes(v)?days.splice(days.indexOf(v),1):days.push(v); m.classList.toggle('on'); }
+    if(m){ const v=m.dataset.v; days.includes(v)?days.splice(days.indexOf(v),1):days.push(v); m.setAttribute('aria-pressed', String(m.classList.toggle('on'))); }
     if(e.target.id==='p_del'){
       if(!confirm('この計画を削除しますか？')) return;
       D.plans = D.plans.filter(x=>x.id!==id); await save(); bg.remove(); render();
@@ -1128,14 +1128,14 @@ function routineSheet(id){
     <h3>${esc(r.name)}のルーティン</h3>
     <div class="muted" style="margin-bottom:12px">ここで選んだアイテムが、ボタンを押した日の使用記録に自動で入ります。</div>
     <div class="chips">${D.items.filter(i=>i.status==='お試し中'||i.status==='定番').map(i=>
-      `<button class="chip ${r.items.includes(i.id)?'on':''}" data-rti="${i.id}">${esc(i.name)}</button>`).join('')
+      `<button class="chip ${r.items.includes(i.id)?'on':''}" data-rti="${i.id}" aria-pressed="${r.items.includes(i.id)}">${esc(i.name)}</button>`).join('')
       || '<span class="muted">使用中のアイテムがありません。先に棚で追加してください。</span>'}</div>
     <div class="sheet-act"><button class="btn btn-primary" id="rt_ok">保存</button></div>
   `);
   let sel = [...r.items];
   bg.addEventListener('click', async e=>{
     const c = e.target.closest('[data-rti]');
-    if(c){ const v=c.dataset.rti; sel.includes(v)?sel.splice(sel.indexOf(v),1):sel.push(v); c.classList.toggle('on'); }
+    if(c){ const v=c.dataset.rti; sel.includes(v)?sel.splice(sel.indexOf(v),1):sel.push(v); c.setAttribute('aria-pressed', String(c.classList.toggle('on'))); }
     if(e.target.id==='rt_ok'){ r.items = sel; await save(); bg.remove(); render(); }
   });
 }
@@ -1192,7 +1192,7 @@ document.addEventListener('click', async e=>{
   if(sym){
     const l = log(todayStr()), v = sym.dataset.sym;
     l.symptoms.includes(v) ? l.symptoms.splice(l.symptoms.indexOf(v),1) : l.symptoms.push(v);
-    sym.classList.toggle('on');
+    sym.setAttribute('aria-pressed', String(sym.classList.toggle('on')));
     await save(); renderBand(); return;
   }
 
@@ -1280,8 +1280,9 @@ async function seedDemo(){
   const d = mk('日焼け止め SPF50','日焼け止め',[],'定番',addDays(T,-200));
   const m = mk('〇〇軟膏（処方）','外用薬（処方）',[],'定番',addDays(T,-60));
   D.items = [a,b,c,d,m];
-  D.routines[0].items = [a.id,d.id];
-  D.routines[1].items = [a.id,b.id,c.id];
+  const amRt = D.routines.find(r=>r.time==='朝'), pmRt = D.routines.find(r=>r.time==='夜');
+  if(amRt) amRt.items = [a.id,d.id];
+  if(pmRt) pmRt.items = [a.id,b.id,c.id];
   D.plans = [{id:uid(),name:'顔（〇〇軟膏）',days:['月','木'],order:'落ち着いたら週2回、月・木の夜に薄く。4週間後に再診。',start:addDays(T,-56),status:'実施中',clinic:'〇〇皮膚科',next:addDays(T,7)}];
   D.logs = {};
   for(let i=90;i>=0;i--){
